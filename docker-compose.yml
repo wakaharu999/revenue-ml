@@ -1,0 +1,16 @@
+services:
+  ml-app:
+    build: .
+ 
+    volumes:
+      - .:/app
+   
+    ports:
+      - "8080:8080"  # API用
+      - "8888:8888"  # JupyterLab用
+    # .envファイルの読み込み
+    env_file:
+      - .env
+   
+    tty: true
+    stdin_open: true

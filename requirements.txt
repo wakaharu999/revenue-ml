@@ -1,0 +1,22 @@
+# スクレイピング
+scrapy
+
+# 機械学習・NLP
+tensorflow
+transformers
+sentencepiece
+fugashi
+unidic-lite
+scikit-learn
+pandas
+numpy
+
+# API
+fastapi
+uvicorn
+python-multipart
+
+# 分析ツール
+jupyterlab
+matplotlib
+seaborn
