@@ -1,16 +1,19 @@
 services:
-  ml-app:
+  # --- APIサーバー用コンテナ ---
+  api:
     build: .
- 
+    ports:
+      - "8081:8080"
     volumes:
       - .:/app
-   
+    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+
+  # --- JupyterLab用コンテナ ---
+  jupyter:
+    build: .
     ports:
-      - "8080:8080"  # API用
-      - "8888:8888"  # JupyterLab用
-    # .envファイルの読み込み
-    env_file:
-      - .env
-   
-    tty: true
-    stdin_open: true
+      - "8889:8888"
+    volumes:
+      - .:/app
+    # Jupyterを起動するコマンドに上書き
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
