@@ -3,3 +3,4 @@ __pycache__/
 models/
 .ipynb_checkpoints/
 node_modules/
+data/crawled_data.jsonl

@@ -1,4 +1,4 @@
-# Scrapy settings for corp_spider project
+# Scrapy settings for company_crawler project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -7,16 +7,22 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = "corp_spider"
+USER_AGENT = 'CompanyInfoCrawler (+https://wakaharu999.com)'
 
-SPIDER_MODULES = ["corp_spider.spiders"]
-NEWSPIDER_MODULE = "corp_spider.spiders"
+DEPTH_LIMIT = 2
+
+FEED_EXPORT_ENCODING = 'utf-8'
+
+BOT_NAME = "company_crawler"
+
+SPIDER_MODULES = ["company_crawler.spiders"]
+NEWSPIDER_MODULE = "company_crawler.spiders"
 
 ADDONS = {}
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = "corp_spider (+http://www.yourdomain.com)"
+#USER_AGENT = "company_crawler (+http://www.yourdomain.com)"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
@@ -24,7 +30,7 @@ ROBOTSTXT_OBEY = True
 # Concurrency and throttling settings
 #CONCURRENT_REQUESTS = 16
 CONCURRENT_REQUESTS_PER_DOMAIN = 1
-DOWNLOAD_DELAY = 1
+DOWNLOAD_DELAY = 3.0
 
 # Disable cookies (enabled by default)
 #COOKIES_ENABLED = False
@@ -41,13 +47,13 @@ DOWNLOAD_DELAY = 1
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    "corp_spider.middlewares.CorpSpiderSpiderMiddleware": 543,
+#    "company_crawler.middlewares.CompanyCrawlerSpiderMiddleware": 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #DOWNLOADER_MIDDLEWARES = {
-#    "corp_spider.middlewares.CorpSpiderDownloaderMiddleware": 543,
+#    "company_crawler.middlewares.CompanyCrawlerDownloaderMiddleware": 543,
 #}
 
 # Enable or disable extensions
@@ -59,7 +65,7 @@ DOWNLOAD_DELAY = 1
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 #ITEM_PIPELINES = {
-#    "corp_spider.pipelines.CorpSpiderPipeline": 300,
+#    "company_crawler.pipelines.CompanyCrawlerPipeline": 300,
 #}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
@@ -84,10 +90,3 @@ DOWNLOAD_DELAY = 1
 #HTTPCACHE_STORAGE = "scrapy.extensions.httpcache.FilesystemCacheStorage"
 
 # Set settings whose default value is deprecated to a future-proof value
-FEED_EXPORT_ENCODING = "utf-8"
-
-# 1. ユーザーエージェント（ブラウザの種類）を偽装する
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-
-# 2. ロボット除けの指示を守る（これはそのままでOKですが念のため）
-ROBOTSTXT_OBEY = True
