@@ -12,11 +12,13 @@ load_dotenv()
 API_KEY = os.getenv("EDB_API_KEY")
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
-# 保存先のファイルパス
+# 保存先
 JSON_PATH = "/app/data/raw_api_data.json"
 CSV_PATH = "/app/data/train.csv"
 
-
+# ==========================================
+# STEP 1: JSONファイルの作成
+# ==========================================
 def step1_fetch_and_save_json():
     if not API_KEY:
         print("【エラー】EDINET_API_KEYが設定されていません。")
@@ -38,17 +40,10 @@ def step1_fetch_and_save_json():
         items = data.get("data", []) if isinstance(data, dict) else data
         extracted_data = []
 
-        # APIのレスポンスから「企業名」と「売上」だけを抽出
+        # APIのレスポンスから「企業名」と「売上」を抽出
         for item in items:
             name = item.get("name")
             revenue = item.get("value")  
-            
-            # データが存在する企業のみリストに追加
-            if name and revenue:
-                extracted_data.append({
-                    "name": name,
-                    "revenue": revenue
-                })
 
         # JSONファイルとして保存
         os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
@@ -78,7 +73,7 @@ def search_official_url_serper(name):
       'Content-Type': 'application/json'
     }
 
-    # いつもの強力なブラックリスト
+    # リクルートサイト等を弾く用のリスト
     blacklist = [
         "wikipedia.org", "rikunabi.com", "mynavi.jp", "doda.jp", "en-japan.com", 
         "type.jp", "prtimes.jp", "nikkei.com", "toyokeizai.net", "yahoo.co.jp", 
@@ -96,8 +91,6 @@ def search_official_url_serper(name):
             return "API_ERROR"
             
         data = response.json()
-        
-        # 'organic' の中に通常の検索結果が入っています
         items = data.get("organic", [])
         
         valid_urls = []
@@ -127,8 +120,9 @@ def search_official_url_serper(name):
         print(f" [通信エラー: {e}] ", end="")
         
     return "NOT_FOUND"
+
 # ==========================================
-# STEP 2: JSONからCSVを作成する本体
+# STEP 2: JSONからCSVを作成
 # ==========================================
 def step2_generate_csv():
     print("--- [STEP 2] 企業名からURLを検索してCSVを作成します（Serper API版） ---")
@@ -174,7 +168,7 @@ def step2_generate_csv():
             url = search_official_url_serper(name)
             
             if url == "API_ERROR":
-                print("\n【警告】APIでエラーが発生しました。処理を中断します。")
+                print("\n【警告】APIでエラーが発生しました")
                 break
                 
             if url != "NOT_FOUND":
@@ -188,10 +182,11 @@ def step2_generate_csv():
             # APIなので待機時間はほんの少しでOK
             time.sleep(0.5)
 
-    print(f"\nテスト処理が完了しました！ {success_count} 件のデータを保存しました。")
+    print(f"\nテスト処理が完了しました。 {success_count} 件のデータを保存しました。")
+
 # ==========================================
 # 実行部分
 # ==========================================
 if __name__ == "__main__":
-    #step1_fetch_and_save_json()
+    step1_fetch_and_save_json()
     step2_generate_csv()
