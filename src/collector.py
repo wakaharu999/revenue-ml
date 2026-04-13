@@ -178,8 +178,7 @@ def step2_generate_csv():
             else:
                 print("見つかりませんでした")
                 writer.writerow([name, "NOT_FOUND", rev_class])
-
-            # APIなので待機時間はほんの少しでOK
+                
             time.sleep(0.5)
 
     print(f"\nテスト処理が完了しました。 {success_count} 件のデータを保存しました。")

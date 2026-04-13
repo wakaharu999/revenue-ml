@@ -8,6 +8,9 @@ unidic-lite
 scikit-learn
 pandas
 numpy
+torch
+sentence-transformers
+tqdm
 fastapi
 uvicorn
 requests
@@ -16,3 +19,4 @@ python-multipart
 jupyterlab
 matplotlib
 seaborn
+pyarrow
