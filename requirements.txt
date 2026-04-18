@@ -1,6 +1,6 @@
 scrapy
 beautifulsoup4
-tensorflow
+tensorflow==2.15.0
 transformers
 sentencepiece
 fugashi

@@ -1,5 +1,5 @@
-import pandas as pd # type: ignore
-import numpy as np # type: ignore
+import pandas as pd 
+import numpy as np #
 import json
 import re
 import os
@@ -67,7 +67,7 @@ def extract_meta_features(df_crawled):
         # --------------------------------------------------
         era_words = r'明治|大正|昭和|平成|令和'
         features['era_word_score'] = np.log1p(len(re.findall(era_words, all_text)))
-        features['founding_year'] = get_first_num(r'(?:創業|創立|設立|発祥|始業).*?((?:18|19|20)[0-9]{2})年', all_text, default=np.nan)
+        features['founding_year'] = get_first_num(r'(?:創業|創立|設立|発祥|始業).*?((?:18|19|20)[0-9]{2})年', all_text, default=np.nan) # type: ignore
         # --------------------------------------------------
         # 3. M&A・提携・研究開発
         # --------------------------------------------------
