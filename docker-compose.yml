@@ -1,5 +1,5 @@
 services:
-  # --- APIサーバー用コンテナ ---
+  #APIサーバーコンテナ
   api:
     platform: linux/arm64  
     build: .
@@ -7,14 +7,4 @@ services:
       - "8081:8080"
     volumes:
       - .:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
-
-  # --- JupyterLab用コンテナ ---
-  jupyter:
-    platform: linux/arm64
-    build: .
-    ports:
-      - "8889:8888"
-    volumes:
-      - .:/app
-    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload

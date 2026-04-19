@@ -1,5 +1,5 @@
 import pandas as pd 
-import numpy as np #
+import numpy as np 
 import json
 import re
 import os
@@ -207,7 +207,7 @@ def main():
         df_already.to_parquet(OUTPUT_PATH, index=False)
         print(f"✅ チェックポイント保存完了: {OUTPUT_PATH}")
 
-    print(f"✨ すべての処理が完了しました！ データ形状: {df_already.shape}")
+    print(f"すべての処理が完了しました データ形状: {df_already.shape}")
 
 if __name__ == "__main__":
     main()
