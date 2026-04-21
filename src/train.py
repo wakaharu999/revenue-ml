@@ -50,7 +50,7 @@ STRUCT_COL_MAP = {
 }
 
 # ==========================================
-# 1. データの読み込みと動的特徴量抽出
+# 1. データの読み込みと特徴量抽出
 # ==========================================
 print("データを読み込み、設定に基づいて特徴量を抽出します...")
 df = pd.read_parquet('../data/train_features.parquet')
@@ -58,7 +58,7 @@ df = pd.read_parquet('../data/train_features.parquet')
 # ラベルの数値化
 le = LabelEncoder()
 y = le.fit_transform(df['revenue_class'])
-num_classes = len(le.classes_) # ★エラー原因1: これが抜けていました！
+num_classes = len(le.classes_) 
 
 selected_text_cols = []
 for page, is_active in FEATURE_CONFIG["text_pages"].items():
@@ -76,7 +76,7 @@ for category, is_active in FEATURE_CONFIG["structural_categories"].items():
 X_text = df[selected_text_cols].fillna(0).values
 X_struct = df[selected_struct_cols].fillna(0).values
 
-print(f"✅ 抽出完了: テキスト特徴量 {X_text.shape[1]}次元, 構造的特徴量 {X_struct.shape[1]}次元")
+print(f"テキスト特徴量 {X_text.shape[1]}次元, 構造的特徴量 {X_struct.shape[1]}次元")
 
 # ==========================================
 # 1.5 データの分割とスケーリング（★一番重要だった抜け落ち部分）
@@ -153,12 +153,12 @@ y_pred = np.argmax(y_pred_prob, axis=1)
 acc = accuracy_score(y_val, y_pred)
 macro_f1 = f1_score(y_val, y_pred, average='macro')
 
-print(f"✅ Accuracy: {acc:.4f}")
-print(f"✅ Macro F1: {macro_f1:.4f}")
+print(f"Accuracy: {acc:.4f}")
+print(f"Macro F1: {macro_f1:.4f}")
 print("\n【クラス別詳細レポート】")
 print(classification_report(y_val, y_pred, target_names=le.classes_))
 
-# 混同行列の描画（Pylanceの型警告対策として list() に変換）
+# 混同行列の描画
 cm = confusion_matrix(y_val, y_pred)
 plt.figure(figsize=(8, 6))
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=list(le.classes_), yticklabels=list(le.classes_))
@@ -180,11 +180,11 @@ print("・TFモデルを保存しました (.keras)")
 
 joblib.dump(scaler, '../models/revenue_model/scaler.pkl')
 joblib.dump(le, '../models/revenue_model/label_encoder.pkl')
-print("・スケーラーとラベルエンコーダーを保存しました")
+print("・スケーラーとラベルエンコーダーを保存")
 
 MODEL_NAME = "intfloat/multilingual-e5-small"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 tokenizer.save_pretrained('../models/revenue_model/tokenizer')
-print("・トークナイザー設定一式を保存しました")
+print("・トークナイザー設定一式を保存")
 
-print("✨ すべてのプロセスが完了しました！")
+print(" すべてのプロセスが完了")

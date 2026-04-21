@@ -15,6 +15,7 @@ scikit-learn
 pandas
 numpy
 joblib       
+lightgbm
 
 # --- APIサーバー ---
 fastapi

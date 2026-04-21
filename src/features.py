@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer # type: ignore
 # ==========================================
 JSONL_PATH = '/app/data/crawled_data.jsonl'
 CSV_PATH = '/app/data/train.csv'
-OUTPUT_PATH = '/app/data/train_features.parquet' # 列数が多いためParquet形式で保存
+OUTPUT_PATH = '/app/data/train_features.parquet' # 列数が多いためParquet形式
 
 CATEGORIES = ['top', 'about', 'history', 'business', 'ir', 'recruit', 'news']
 CHUNK_SIZE = 400
@@ -172,7 +172,7 @@ def main():
     # 未処理の企業だけを抽出
     df_todo = df_train[~df_train['company_name'].isin(done_companies)]
     if len(df_todo) == 0:
-        print("すべての企業の処理が完了しています！")
+        print("処理終了")
         return
 
     # JSONLの読み込み
@@ -205,9 +205,9 @@ def main():
         # 過去のデータと結合して保存
         df_already = pd.concat([df_already, df_final_batch], ignore_index=True)
         df_already.to_parquet(OUTPUT_PATH, index=False)
-        print(f"✅ チェックポイント保存完了: {OUTPUT_PATH}")
+        print(f"保存完了: {OUTPUT_PATH}")
 
-    print(f"すべての処理が完了しました データ形状: {df_already.shape}")
+    print(f"すべての処理が完了 データ形状: {df_already.shape}")
 
 if __name__ == "__main__":
     main()
