@@ -1,38 +1,23 @@
 steps:
-  # 1. Dockerイメージのビルド
+  # 1. コンテナイメージのビルド
   - name: 'gcr.io/cloud-builders/docker'
-    args: 
-      - 'build'
-      - '-t'
-      - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/revenue-repo/revenue-api:latest'
-      - '.'
+    args: ['build', '-t', 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/haru-repo/haru-first-app:latest', '.']
 
   # 2. Artifact Registryへのプッシュ
   - name: 'gcr.io/cloud-builders/docker'
-    args: 
-      - 'push'
-      - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/revenue-repo/revenue-api:latest'
+    args: ['push', 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/haru-repo/haru-first-app:latest']
 
-  # 3. Cloud Runへのデプロイ（要件のスペックを指定）
+  # 3. (オプション) Cloud Runへのデプロイまで自動化する場合
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
-      - 'revenue-api-service'
+      - 'haru-first-app'
       - '--image'
-      - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/revenue-repo/revenue-api:latest'
+      - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/haru-repo/haru-first-app:latest'
       - '--region'
-      - 'asia-northeast1'      # 東京リージョン
-      - '--allow-unauthenticated' # 誰でもアクセス可能にする
-      - '--memory'
-      - '4Gi'                  # 要件: 2Gi以上 (モデルロード用)
-      - '--cpu'
-      - '2'                    # 要件: 2以上
-      - '--timeout'
-      - '300s'                 # 要件: 300秒 (Scrapyクローリング待機用)
-      - '--port'
-      - '8080'
+      - 'asia-northeast1'
 
 images:
-  - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/revenue-repo/revenue-api:latest'
+  - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/haru-repo/haru-first-app:latest'

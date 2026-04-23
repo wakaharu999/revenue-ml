@@ -3,11 +3,11 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# ログのリアルタイム出力と、TensorFlowの不要な警告をミュートする魔法の呪文
+# ログのリアルタイム出力と、TensorFlowの不要な警告をミュート
 ENV PYTHONUNBUFFERED=1
 ENV TF_CPP_MIN_LOG_LEVEL=2
 
-# 必要なシステムパッケージ（curlはローカルでAPIを叩くテスト用）
+# ビルド時に必要なパッケージ
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
@@ -23,5 +23,5 @@ COPY models/ ./models/
 # COPY data/ ./data/
 
 # コンテナ起動時にAPIサーバー（FastAPI）を立ち上げ
-# （srcディレクトリの中のmain.pyを起動する指定に変更）
+# host 0.0.0.0 は、コンテナ外部からアクセス可能にするための設定
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]

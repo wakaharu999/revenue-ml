@@ -1,190 +1,313 @@
+"""
+本番用モデル訓練スクリプト
+Model 2 (Text + Structural Features Late Fusion) を全データで学習し、
+SavedModel 形式でモデルと関連ファイルを保存
+"""
+
 import os
+import json
+import pickle
 import pandas as pd
 import numpy as np
-import tensorflow as tf # type: ignore
+import tensorflow as tf
 from tensorflow import keras # type: ignore
 from tensorflow.keras import layers # type: ignore
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import accuracy_score, f1_score, classification_report, confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
-import joblib
-from transformers import AutoTokenizer # type: ignore
+from sklearn.metrics import accuracy_score, f1_score, classification_report
 
-# 乱数シードの固定（再現性確保）
-tf.keras.utils.set_random_seed(42)
+# ============================================================
+# 1. 設定
+# ============================================================
+RANDOM_SEED = 333
+DATA_DIR = os.path.join(os.path.dirname(__file__), '../data')
+MODEL_DIR = os.path.join(os.path.dirname(__file__), '../models/revenue_model')
+SAVED_MODEL_DIR = os.path.join(MODEL_DIR, 'tf_model')
+EPOCHS = 100
+BATCH_SIZE = 32
+LEARNING_RATE = 0.001
+VALIDATION_SPLIT = 0.2
 
-# ==========================================
-# 0. 特徴量の簡単選択設定（ここでON/OFFを管理）
-# ==========================================
-FEATURE_CONFIG = {
-    "text_pages": {
-        "top": True,
-        "about": True,
-        "history": True,
-        "business": True,
-        "ir": True,
-        "recruit": True,
-        "news": True
-    },
-    "structural_categories": {
-        "global_power": True,
-        "history_brand": True,
-        "ma_alliance": True,
-        "market_share": True,
-        "business_scale": True,
-        "hr_welfare": True,
-        "governance": True
+# 乱数シード設定
+tf.keras.utils.set_random_seed(RANDOM_SEED)
+np.random.seed(RANDOM_SEED)
+
+# ============================================================
+# 2. データの読み込みと前処理
+# ============================================================
+def load_and_prepare_data():
+    """データを読み込み、テキストベクトル・構造特徴量を抽出"""
+    print("📂 Loading data...")
+    
+    # Parquet ファイルを読み込み
+    df = pd.read_parquet(os.path.join(DATA_DIR, 'train_features.parquet'))
+    df_tfidf = pd.read_parquet(os.path.join(DATA_DIR, 'tfidf_features.parquet'))
+    
+    # 不要な列を削除
+    cols_to_drop = [c for c in ['revenue_class', 'url', 'page_category'] 
+                    if c in df_tfidf.columns]
+    df_tfidf_clean = df_tfidf.drop(columns=cols_to_drop)
+    
+    # 企業名でインナージョイン
+    df_merged = pd.merge(df, df_tfidf_clean, on='company_name', how='inner')
+    
+    print(f"✓ Merged data shape: {df_merged.shape}")
+    
+    # テキストベクトルの抽出（HuggingFace の _vec_ カラム）
+    hf_cols = [c for c in df_merged.columns 
+               if '_vec_' in c and not c.startswith('tfidf_vec_')]
+    X_text = df_merged[hf_cols].fillna(0).to_numpy(dtype=np.float32)
+    
+    # 構造特徴量の抽出
+    struct_cols = [
+        c for c in df_merged.columns 
+        if not c.startswith('tfidf_vec_') 
+        and '_vec_' not in c 
+        and c not in ['company_name', 'revenue_class', 'url', 'page_category']
+        and pd.api.types.is_numeric_dtype(df_merged[c])
+    ]
+    X_struct = df_merged[struct_cols].fillna(0).to_numpy(dtype=np.float32)
+    
+    # ラベルエンコーディング
+    le = LabelEncoder()
+    y = le.fit_transform(df_merged['revenue_class'])
+    y = np.array(y, dtype=np.int32)
+    
+    num_classes = len(le.classes_)
+    
+    print(f"✓ Text vectors shape       : {X_text.shape}")
+    print(f"✓ Structural features shape: {X_struct.shape}")
+    print(f"✓ Number of classes       : {num_classes}")
+    print(f"✓ Classes                 : {le.classes_}")
+    print(f"✓ Text vector columns     : {len(hf_cols)}")
+    print(f"✓ Structural columns      : {len(struct_cols)}")
+    
+    return X_text, X_struct, y, le, struct_cols, hf_cols, num_classes
+
+
+# ============================================================
+# 3. Model 2: Two-Tower Late Fusion Architecture
+# ============================================================
+def build_model_2(text_dim, struct_dim, num_classes):
+    """
+    Model 2: テキストと構造特徴量を独立して処理してから結合する融合モデル
+    
+    Args:
+        text_dim: テキストベクトルの次元数
+        struct_dim: 構造特徴量の次元数
+        num_classes: クラス数
+        
+    Returns:
+        keras.Model: コンパイル済みモデル
+    """
+    # --- 入力層 ---
+    text_input = keras.Input(shape=(text_dim,), name="text_vectors")
+    struct_input = keras.Input(shape=(struct_dim,), name="structural_features")
+    
+    # --- テキスト処理用MLP ---
+    x_text = layers.Dense(256, activation="relu")(text_input)
+    x_text = layers.BatchNormalization()(x_text)
+    x_text = layers.Dropout(0.3)(x_text)
+    
+    x_text = layers.Dense(64, activation="relu")(x_text)
+    x_text = layers.BatchNormalization()(x_text)
+    x_text = layers.Dropout(0.3)(x_text)
+    
+    # --- 構造特徴量処理用MLP ---
+    x_struct = layers.Dense(64, activation="relu")(struct_input)
+    x_struct = layers.BatchNormalization()(x_struct)
+    x_struct = layers.Dropout(0.2)(x_struct)
+    
+    # --- 結合 (Late Fusion) ---
+    combined = layers.Concatenate(name="late_fusion")([x_text, x_struct])
+    
+    # --- 結合後のMLP ---
+    z = layers.Dense(256, activation="relu")(combined)
+    z = layers.BatchNormalization()(z)
+    z = layers.Dropout(0.4)(z)
+    
+    outputs = layers.Dense(num_classes, activation="softmax")(z)
+    
+    # モデルのコンパイル
+    model = keras.Model(inputs=[text_input, struct_input], outputs=outputs)
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+        loss="sparse_categorical_crossentropy",
+        metrics=["accuracy"]
+    )
+    
+    return model
+
+
+# ============================================================
+# 4. モデルの訓練
+# ============================================================
+def train_model(X_text, X_struct, y, num_classes):
+    """
+    モデル2を全データで訓練
+    
+    Args:
+        X_text: テキストベクトル配列
+        X_struct: 構造特徴量配列
+        y: ラベル配列
+        num_classes: クラス数
+        
+    Returns:
+        model: 訓練済みモデル
+        scaler: 構造特徴量の正規化器
+    """
+    print("\n🚀 Training Model 2 (Late Fusion: Text + Structural Features)...")
+    
+    # 構造特徴量の正規化（情報漏洩防止のため全データで fittingしない）
+    # 本番運用では、全データで fit_transform するのが標準
+    scaler = StandardScaler()
+    X_struct_scaled = scaler.fit_transform(X_struct)
+    
+    # モデルのビルド
+    model = build_model_2(X_text.shape[1], X_struct.shape[1], num_classes)
+    
+    # 早期停止の設定
+    early_stopping = keras.callbacks.EarlyStopping(
+        monitor='val_loss',
+        patience=15,
+        restore_best_weights=True,
+        verbose=1
+    )
+    
+    # 訓練
+    history = model.fit(
+        {"text_vectors": X_text, "structural_features": X_struct_scaled},
+        y,
+        validation_split=VALIDATION_SPLIT,
+        epochs=EPOCHS,
+        batch_size=BATCH_SIZE,
+        callbacks=[early_stopping],
+        verbose=1
+    )
+    
+    print("✓ Training completed")
+    
+    return model, scaler
+
+
+# ============================================================
+# 5. モデルと関連ファイルの保存
+# ============================================================
+def save_model_artifacts(model, scaler, le, struct_cols, hf_cols, num_classes):
+    """
+    モデルと関連ファイルを保存
+    
+    Args:
+        model: 訓練済みモデル
+        scaler: 構造特徴量の正規化器
+        le: ラベルエンコーダー
+        struct_cols: 構造特徴量のカラム名リスト
+        hf_cols: テキストベクトルのカラム名リスト
+        num_classes: クラス数
+    """
+    print("\n💾 Saving model artifacts...")
+    
+    # モデルディレクトリの作成
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    
+    # 1. TensorFlow モデルを SavedModel 形式で保存
+    print(f"  → Saving SavedModel to {SAVED_MODEL_DIR}")
+    model.save(SAVED_MODEL_DIR, save_format='tf')
+    
+    # 2. LabelEncoder を保存
+    le_path = os.path.join(MODEL_DIR, 'label_encoder.pkl')
+    with open(le_path, 'wb') as f:
+        pickle.dump(le, f)
+    print(f"  ✓ Label encoder saved: {le_path}")
+    
+    # 3. StandardScaler を保存
+    scaler_path = os.path.join(MODEL_DIR, 'scaler.pkl')
+    with open(scaler_path, 'wb') as f:
+        pickle.dump(scaler, f)
+    print(f"  ✓ Scaler saved: {scaler_path}")
+    
+    # 4. メタデータ（設定）を JSON で保存
+    metadata = {
+        "model_name": "revenue_prediction_model_v2",
+        "model_type": "two_tower_late_fusion",
+        "description": "Text + Structural Features Late Fusion Model for Revenue Classification",
+        "num_classes": num_classes,
+        "classes": le.classes_.tolist(),
+        "text_vector_dim": len(hf_cols),
+        "structural_features_dim": len(struct_cols),
+        "structural_feature_columns": struct_cols,
+        "text_vector_columns": hf_cols,
+        "random_seed": RANDOM_SEED,
+        "training_config": {
+            "epochs": EPOCHS,
+            "batch_size": BATCH_SIZE,
+            "learning_rate": LEARNING_RATE,
+            "validation_split": VALIDATION_SPLIT
+        },
+        "architecture": {
+            "text_tower": {
+                "layers": [
+                    {"type": "Dense", "units": 256, "activation": "relu"},
+                    {"type": "BatchNormalization"},
+                    {"type": "Dropout", "rate": 0.3},
+                    {"type": "Dense", "units": 64, "activation": "relu"},
+                    {"type": "BatchNormalization"},
+                    {"type": "Dropout", "rate": 0.3}
+                ]
+            },
+            "struct_tower": {
+                "layers": [
+                    {"type": "Dense", "units": 64, "activation": "relu"},
+                    {"type": "BatchNormalization"},
+                    {"type": "Dropout", "rate": 0.2}
+                ]
+            },
+            "fusion": {
+                "method": "late_fusion_concatenate"
+            },
+            "output_tower": {
+                "layers": [
+                    {"type": "Dense", "units": 256, "activation": "relu"},
+                    {"type": "BatchNormalization"},
+                    {"type": "Dropout", "rate": 0.4},
+                    {"type": "Dense", "units": num_classes, "activation": "softmax"}
+                ]
+            }
+        }
     }
-}
-
-STRUCT_COL_MAP = {
-    "global_power": ['global_word_score', 'overseas_sales_ratio', 'global_bases'],
-    "history_brand": ['era_word_score', 'founding_year'],
-    "ma_alliance": ['ma_word_score', 'subsidiaries_count', 'partners_count'],
-    "market_share": ['market_leader_score', 'domestic_share_pct'],
-    "business_scale": ['num_business_types', 'money_cho_score', 'money_oku_score'],
-    "hr_welfare": ['welfare_word_score', 'employees_count', 'num_job_types'],
-    "governance": ['governance_score']
-}
-
-# ==========================================
-# 1. データの読み込みと特徴量抽出
-# ==========================================
-print("データを読み込み、設定に基づいて特徴量を抽出します...")
-df = pd.read_parquet('../data/train_features.parquet')
-
-# ラベルの数値化
-le = LabelEncoder()
-y = le.fit_transform(df['revenue_class'])
-num_classes = len(le.classes_) 
-
-selected_text_cols = []
-for page, is_active in FEATURE_CONFIG["text_pages"].items():
-    if is_active:
-        vec_cols = [c for c in df.columns if c.startswith(f"{page}_vec_")]
-        selected_text_cols.extend(vec_cols)
-        selected_text_cols.extend([c for c in df.columns if c in [f"has_{page}", f"{page}_length_log", f"{page}_ratio"]])
-
-selected_struct_cols = []
-for category, is_active in FEATURE_CONFIG["structural_categories"].items():
-    if is_active:
-        cols = [c for c in STRUCT_COL_MAP[category] if c in df.columns]
-        selected_struct_cols.extend(cols)
-
-X_text = df[selected_text_cols].fillna(0).values
-X_struct = df[selected_struct_cols].fillna(0).values
-
-print(f"テキスト特徴量 {X_text.shape[1]}次元, 構造的特徴量 {X_struct.shape[1]}次元")
-
-# ==========================================
-# 1.5 データの分割とスケーリング（★一番重要だった抜け落ち部分）
-# ==========================================
-print("学習データと検証データに分割しています...")
-X_text_train, X_text_val, X_struct_train, X_struct_val, y_train, y_val = train_test_split(
-    X_text, X_struct, y, test_size=0.2, random_state=42, stratify=y
-)
-
-scaler = StandardScaler()
-X_struct_train_scaled = scaler.fit_transform(X_struct_train)
-X_struct_val_scaled = scaler.transform(X_struct_val)
+    
+    metadata_path = os.path.join(MODEL_DIR, 'model_config.json')
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+    print(f"  ✓ Model config saved: {metadata_path}")
+    
+    print("\n✅ All artifacts saved successfully!")
+    print(f"   Model directory: {MODEL_DIR}")
+    print(f"   SavedModel path: {SAVED_MODEL_DIR}")
 
 
-# ==========================================
-# 2. モデル構築（マルチ入力アーキテクチャ）
-# ==========================================
-print("モデルを構築しています...")
 
-text_input = keras.Input(shape=(X_text.shape[1],), name="text_vectors")
-x1 = layers.Dense(256, activation="relu")(text_input)
-x1 = layers.BatchNormalization()(x1)
-x1 = layers.Dropout(0.4)(x1)
-x1 = layers.Dense(128, activation="relu")(x1)
+# ============================================================
+# 7. メイン処理
+# ============================================================
+def main():
+    """メイン処理"""
+    print("="*60)
+    print("🤖 Model Training Pipeline - Model 2 (Late Fusion)")
+    print("="*60)
+    
+    # データの読み込み
+    X_text, X_struct, y, le, struct_cols, hf_cols, num_classes = load_and_prepare_data()
+    
+    # モデルの訓練
+    model, scaler = train_model(X_text, X_struct, y, num_classes)
+    
+    # モデルと関連ファイルの保存
+    save_model_artifacts(model, scaler, le, struct_cols, hf_cols, num_classes)
+    
+    print("\n" + "="*60)
+    print("✨ Training pipeline completed successfully!")
+    print("="*60)
 
-struct_input = keras.Input(shape=(X_struct.shape[1],), name="structural_features")
-x2 = layers.Dense(64, activation="relu")(struct_input)
-x2 = layers.BatchNormalization()(x2)
-x2 = layers.Dropout(0.3)(x2)
 
-combined = layers.Concatenate()([x1, x2])
-
-z = layers.Dense(128, activation="relu")(combined)
-z = layers.Dropout(0.3)(z)
-z = layers.Dense(64, activation="relu")(z)
-output = layers.Dense(num_classes, activation="softmax", name="prediction")(z)
-
-model = keras.Model(inputs=[text_input, struct_input], outputs=output)
-
-model.compile(
-    optimizer=keras.optimizers.Adam(learning_rate=1e-3),
-    loss="sparse_categorical_crossentropy",
-    metrics=["accuracy"]
-)
-
-# ==========================================
-# 3. 学習（Training）
-# ==========================================
-print("学習を開始します...")
-early_stopping = keras.callbacks.EarlyStopping(
-    monitor='val_loss', patience=10, restore_best_weights=True
-)
-
-history = model.fit(
-    {"text_vectors": X_text_train, "structural_features": X_struct_train_scaled},
-    y_train,
-    validation_data=(
-        {"text_vectors": X_text_val, "structural_features": X_struct_val_scaled},
-        y_val
-    ), # type: ignore
-    epochs=100,
-    batch_size=32,
-    callbacks=[early_stopping],
-    verbose=1
-)
-
-# ==========================================
-# 4. 評価（Evaluation）
-# ==========================================
-print("\nモデルの評価を実行します...")
-y_pred_prob = model.predict({"text_vectors": X_text_val, "structural_features": X_struct_val_scaled}) # type: ignore
-y_pred = np.argmax(y_pred_prob, axis=1)
-
-acc = accuracy_score(y_val, y_pred)
-macro_f1 = f1_score(y_val, y_pred, average='macro')
-
-print(f"Accuracy: {acc:.4f}")
-print(f"Macro F1: {macro_f1:.4f}")
-print("\n【クラス別詳細レポート】")
-print(classification_report(y_val, y_pred, target_names=le.classes_))
-
-# 混同行列の描画
-cm = confusion_matrix(y_val, y_pred)
-plt.figure(figsize=(8, 6))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=list(le.classes_), yticklabels=list(le.classes_))
-plt.title('Confusion Matrix (Multi-Input DNN)')
-plt.ylabel('True Class')
-plt.xlabel('Predicted Class')
-plt.tight_layout()
-plt.savefig('confusion_matrix.png')
-plt.show()
-
-# ==========================================
-# 5. モデルとトークナイザーの保存
-# ==========================================
-print("\nモデル一式を保存しています...")
-os.makedirs('../models/revenue_model', exist_ok=True)
-
-model.save('../models/revenue_model/tf_model.keras')
-print("・TFモデルを保存しました (.keras)")
-
-joblib.dump(scaler, '../models/revenue_model/scaler.pkl')
-joblib.dump(le, '../models/revenue_model/label_encoder.pkl')
-print("・スケーラーとラベルエンコーダーを保存")
-
-MODEL_NAME = "intfloat/multilingual-e5-small"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-tokenizer.save_pretrained('../models/revenue_model/tokenizer')
-print("・トークナイザー設定一式を保存")
-
-print(" すべてのプロセスが完了")
+if __name__ == "__main__":
+    main()
