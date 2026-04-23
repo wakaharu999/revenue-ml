@@ -169,9 +169,7 @@ class FeatureExtractor:
         # 7. ガバナンス (1)
         struct_features.append(np.log1p(len(re.findall(r'コーポレートガバナンス|コンプライアンス|内部統制|リスクマネジメント|監査|サステナビリティ|SDGs|ESG|CSR|環境保全|社会貢献|カーボンニュートラル|脱炭素', all_text))))
 
-        final_struct_vector = np.array(struct_features) # 17次元
-
+        final_text_vector = np.concatenate([np.array(text_features_list), np.array(text_vector_list), np.array(struct_features)])
         return {
             'text': final_text_vector,
-            'struct': final_struct_vector
         }, summary
