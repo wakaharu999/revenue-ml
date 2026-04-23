@@ -137,8 +137,8 @@ class FeatureExtractor:
                 pooled_vec = np.mean(embeddings, axis=0)
                 text_vector_list.extend(pooled_vec)
 
-        # 21 + 5376 = 5397次元
-        final_text_vector = np.concatenate([np.array(text_features_list), np.array(text_vector_list)])
+        # HF埋め込み
+        final_text_vector = np.array(text_vector_list)
 
         # --------------------------------------------------
         # 特徴量B: 構造的特徴量側（17次元）
@@ -169,7 +169,9 @@ class FeatureExtractor:
         # 7. ガバナンス (1)
         struct_features.append(np.log1p(len(re.findall(r'コーポレートガバナンス|コンプライアンス|内部統制|リスクマネジメント|監査|サステナビリティ|SDGs|ESG|CSR|環境保全|社会貢献|カーボンニュートラル|脱炭素', all_text))))
 
-        final_text_vector = np.concatenate([np.array(text_features_list), np.array(text_vector_list), np.array(struct_features)])
+        # 構造＋キーワード
+        final_struct_vector = np.concatenate([np.array(text_features_list), np.array(struct_features)]) # テキスト側の21次元も結合して38次元に
         return {
             'text': final_text_vector,
+            'struct': final_struct_vector
         }, summary
