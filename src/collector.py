@@ -125,7 +125,7 @@ def search_official_url_serper(name):
 # STEP 2: JSONからCSVを作成
 # ==========================================
 def step2_generate_csv():
-    print("--- [STEP 2] 企業名からURLを検索してCSVを作成します（Serper API版） ---")
+    print("--- [STEP 2] 企業名からURLを検索してCSVを作成します ---")
 
     if not SERPER_API_KEY:
         print("【エラー】SerperのAPIキーが設定されていません。")
