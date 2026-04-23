@@ -3,7 +3,7 @@ from pydantic import BaseModel, HttpUrl
 from typing import Dict, Any
 
 # 推論パイプラインクラスをインポート
-from predict import RevenuePredictor
+from src.predict import RevenuePredictor
 
 app = FastAPI(title="Revenue Range Estimation API")
 
