@@ -13,10 +13,10 @@ class RevenuePredictor:
     def __init__(self, model_dir: str = "models/revenue_model"):
         self.model_dir = model_dir
         self.range_map = {
-            "S": "売り上げ1兆円以上",
-            "A": "売り上げ5000億円以上1兆円未満",
-            "B": "売り上げ1000億円以上5000億円未満",
-            "C": "売り上げ1000億円未満",
+            "S": "売り上げ10兆円以上",
+            "A": "売り上げ1兆円以上10兆円未満",
+            "B": "売り上げ5000億円以上1兆円未満",
+            "C": "売り上げ5000億円未満",
         }
         self._load_assets()
 
