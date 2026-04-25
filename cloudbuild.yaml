@@ -23,7 +23,7 @@ steps:
       - '--cpu'
       - '4'           
       - '--timeout'
-      - '600'
+      - '300'
 images:
   - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/haru-repo/haru-first-app:latest'
 

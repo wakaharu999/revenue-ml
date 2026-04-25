@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 import scrapy
 from scrapy.crawler import CrawlerProcess
+from urllib.parse import urlparse
 
 # 警告ログのミュート
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -17,47 +18,98 @@ CATEGORIES = ['top', 'about', 'history', 'business', 'ir', 'recruit', 'news']
 class RevenueSpider(scrapy.Spider):
     name = "revenue_spider"
     custom_settings = {
-        'DOWNLOAD_TIMEOUT': 7,          # 1ページ7秒で諦める
-        'CLOSESPIDER_TIMEOUT': 15,       # 全体15秒で強制終了
-        'DEPTH_LIMIT': 1,                # リンクの深さ
+        'DOWNLOAD_TIMEOUT': 7,
+        'CLOSESPIDER_TIMEOUT': 15,
+        'DEPTH_LIMIT': 1,
         'LOG_LEVEL': 'ERROR',
         'USER_AGENT': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     }
 
     def __init__(self, start_url=None, result_queue=None, *args, **kwargs):
         super(RevenueSpider, self).__init__(*args, **kwargs)
-        self.start_urls = [start_url] if start_url else []
+        # 初期リクエストでメタデータ（top）を渡す
+        self.start_requests_custom = [scrapy.Request(url=start_url, meta={'category': 'top'})] if start_url else []
         self.result_queue = result_queue
         self.collected_texts = {cat: "" for cat in CATEGORIES}
         self.pages_crawled = 0
+        
+        # 修正点: API用安全装置: 各カテゴリ1ページ見つけたら満足する
+        self.found_categories = set(['top']) 
+
+    def start_requests(self):
+        for req in self.start_requests_custom:
+            yield req
 
     def parse(self, response):
         self.pages_crawled += 1
-        url = response.url.lower()
+        category = response.meta.get('category', 'top')
         
-        # 本文抽出
+        # ==========================================
+        # 1. crawler.py と完全一致のテキスト抽出
+        # ==========================================
         soup = BeautifulSoup(response.body, 'html.parser')
+        
+        for script in soup(["script", "style", "header", "footer", "nav", "noscript"]):
+            script.decompose()
+            
         text = soup.get_text(separator=' ', strip=True)
+        clean_text = re.sub(r'\s+', ' ', text)
 
-        # URLからカテゴリ判定
-        page_type = "top"
-        if "about" in url or "company" in url: page_type = "about"
-        elif "history" in url: page_type = "history"
-        elif "business" in url or "service" in url: page_type = "business"
-        elif "ir" in url or "investor" in url: page_type = "ir"
-        elif "recruit" in url or "career" in url: page_type = "recruit"
-        elif "news" in url or "press" in url: page_type = "news"
+        # テキストの保存（短すぎる場合はノイズとして捨てるのも crawler.py と同じ）
+        if len(clean_text) > 50:
+            # 修正点: テキストが長すぎてメモリ爆発するのを防ぐ（最大7000文字）
+            if len(self.collected_texts[category]) < 7000:
+                self.collected_texts[category] += " " + clean_text[:7000]
 
-        self.collected_texts[page_type] += " " + text
+        # ==========================================
+        # 2. crawler.py と完全一致のリンク巡回
+        # ==========================================
+        if category == 'top':
+            domain = urlparse(response.url).netloc
+            
+            for a_tag in response.css('a'):
+                link_url = a_tag.attrib.get('href')
+                link_text = a_tag.css('::text').get(default='').strip().lower()
 
-        # Topページならリンクを辿る
-        if page_type == "top":
-            links = response.css('a::attr(href)').getall()
-            for link in links[:8]: # 速度重視で最大8リンク
-                yield response.follow(link, self.parse)
+                if not link_url:
+                    continue
+
+                absolute_url = response.urljoin(link_url)
+                
+                # 自分と同じドメインのリンクしか辿らない
+                if domain not in urlparse(absolute_url).netloc:
+                    continue
+
+                # crawler.pyの正規表現関数でカテゴリ判定
+                next_category = self._categorize_link(absolute_url.lower(), link_text)
+                
+                # 修正点: API用安全装置: newsも拾うが、無限ループを防ぐため各カテゴリ1ページのみ辿る
+                if next_category and next_category not in self.found_categories:
+                    self.found_categories.add(next_category)
+                    yield scrapy.Request(
+                        url=absolute_url,
+                        callback=self.parse,
+                        meta={'category': next_category}
+                    )
+
+    def _categorize_link(self, url, text):
+        """正規表現判定"""
+        if re.search(r'ir|investor|投資家|財務', url) or re.search(r'ir|投資家', text):
+            return 'ir'
+        elif re.search(r'recruit|career|採用|求人|エントリー', url) or re.search(r'採用|求人|キャリア', text):
+            return 'recruit'
+        elif re.search(r'about|company|profile|corporate|会社|概要', url) or re.search(r'会社|企業|概要', text):
+            return 'about'
+        elif re.search(r'history|沿革|歴史|歩み', url) or re.search(r'沿革|歴史', text):
+            return 'history'
+        elif re.search(r'business|service|solution|事業|サービス', url) or re.search(r'事業|サービス', text):
+            return 'business'
+        elif re.search(r'news|press|release|info|ニュース|お知らせ', url) or re.search(r'ニュース|プレスリリース', text):
+            return 'news'
+        return None
 
     def closed(self, reason):
-        self.result_queue.put({ # type: ignore
+        self.result_queue.put({
             'texts': self.collected_texts,
             'summary': {
                 'pages_crawled': self.pages_crawled,
@@ -66,13 +118,10 @@ class RevenueSpider(scrapy.Spider):
                 'text_length_total': sum(len(t) for t in self.collected_texts.values())
             }
         })
-
-# Twisted(Reactor)の再起動エラーを防ぐための別プロセス起動関数
 def run_spider(url, queue):
     process = CrawlerProcess()
     process.crawl(RevenueSpider, start_url=url, result_queue=queue)
     process.start()
-
 # ==========================================
 # 2. 特徴量抽出のメインクラス
 # ==========================================
