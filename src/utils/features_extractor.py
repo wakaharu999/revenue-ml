@@ -17,8 +17,8 @@ CATEGORIES = ['top', 'about', 'history', 'business', 'ir', 'recruit', 'news']
 class RevenueSpider(scrapy.Spider):
     name = "revenue_spider"
     custom_settings = {
-        'DOWNLOAD_TIMEOUT': 10,          # 1ページ10秒で諦める
-        'CLOSESPIDER_TIMEOUT': 25,       # 全体25秒で強制終了
+        'DOWNLOAD_TIMEOUT': 7,          # 1ページ7秒で諦める
+        'CLOSESPIDER_TIMEOUT': 15,       # 全体15秒で強制終了
         'DEPTH_LIMIT': 1,                # リンクの深さ
         'LOG_LEVEL': 'ERROR',
         'USER_AGENT': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -97,8 +97,8 @@ class FeatureExtractor:
         p = Process(target=run_spider, args=(url, q))
         p.start()
         
-        # スパイダー側が25秒で終わるはずなので、30秒で強制回収
-        p.join(timeout=30)
+        # スパイダー側が15秒で終わるはずなので、20秒で強制回収
+        p.join(timeout=20)
         if p.is_alive():
             p.terminate()
             p.join()
