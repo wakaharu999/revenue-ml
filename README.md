@@ -1,6 +1,13 @@
 ## 売り上げ予測AI
 企業の売り上げを企業HPのテキストから予測します
 
+| クラス | 売上レンジ |
+|--------|------------|
+| S | 10兆円〜 |
+| A | 1兆〜10兆円 |
+| B | 5000億〜1兆円 |
+| C | 〜5000億円 |
+
 ## データ収集
 ## 特徴量エンジニアリング
 - **テキスト埋め込みベクトル**
@@ -12,14 +19,14 @@
         - `multilingual-e5-base`の評価結果を示すテクニカルレポートにおける日本語の検索能力の評価は非常に高く、多言語だからといって日本語への精度が劣るわけではないから[@wang2024multilinguale5textembeddings]。
        
 - **追加特徴量**
-    - 詳細を`/notebook/eda.ipynb`に記載
+    - 詳細を`/notebook/eda.ipynb`に記載(キーワード特徴量・TF-IDF特徴量)
 ## モデル設計
 - **モデル概要**
     - 入力：テキストベクトル＋正規表現によるキーワード特徴＋構造特徴量
     - 出力：売り上げクラス
 
     - ネットワーク構成
-    
+
     | セクション | 処理内容 |
     | :--- | :--- |
     | テキストMLP | Dense(256) → BN → Dropout(0.3) → Dense(64) → BN → Dropout(0.3) |
@@ -32,7 +39,146 @@
         - 出力層：`Softmax`
     - 過学習防止のため、各層に BatcNormalization と Dropout を適用した
 - 設計意図
-    -
-    -
+    - 入力をテキスト埋め込みベクトル＋キーワード・構造特徴にしたのは`Silhouette Score`が優れていたEDAの結果を踏またから。
+    - それぞれの特徴に対して全結合層を挟んでから結合を行ったのは次元数などのモダリティの違いからいきなり結合すると学習が壊れるのではないかと判断したため。
+    - テキストベクトルのみを用いたTF-IDFを使ったゲーティング処理によるテキストベクトルでも同程度のいい結果が得られたが(`/model/model_tuning.ipynb`)、トークン辞書作成はサンプルデータへの依存性が高く、今回サンプルデータに含まなかった世界の企業やベンチャー企業と辞書との不一致を踏まえAPIとしての機能性を考慮し採用しなかった。
+
 ## テスト結果
+- **三菱商事株式会社(正解ランクS)**
+```json
+{
+  "url": "https://www.mitsubishicorp.com/jp/ja/",
+  "estimated_revenue_class": "A",
+  "estimated_revenue_range": "売り上げ1兆円以上10兆円未満",
+  "confidence": 0.8601,
+  "class_probabilities": {
+    "A": 0.8601,
+    "B": 0.009,
+    "C": 0.074,
+    "S": 0.057
+  },
+  "features_summary": {
+    "pages_crawled": 4,
+    "has_ir_page": true,
+    "has_recruit_page": false,
+    "text_length_total": 4709
+  },
+  "processing_time_sec": 6.88
+}
+```
+
+- **日産自動車株式会社(正解ランクS)**
+```json
+{
+  "url": "https://www.nissan-global.com/JP/",
+  "estimated_revenue_class": "C",
+  "estimated_revenue_range": "売り上げ5000億円未満",
+  "confidence": 0.5108,
+  "class_probabilities": {
+    "A": 0.0287,
+    "B": 0.4467,
+    "C": 0.5108,
+    "S": 0.0138
+  },
+  "features_summary": {
+    "pages_crawled": 7,
+    "has_ir_page": true,
+    "has_recruit_page": true,
+    "text_length_total": 5162
+  },
+  "processing_time_sec": 7.63
+}
+```
+
+- **株式会社セブン＆アイ・ホールディングス(正解ランクA)**
+```json
+{
+  "url": "https://www.7andi.com/",
+  "estimated_revenue_class": "A",
+  "estimated_revenue_range": "売り上げ1兆円以上10兆円未満",
+  "confidence": 0.7845,
+  "class_probabilities": {
+    "A": 0.7845,
+    "B": 0.0415,
+    "C": 0.1119,
+    "S": 0.0621
+  },
+  "features_summary": {
+    "pages_crawled": 5,
+    "has_ir_page": true,
+    "has_recruit_page": false,
+    "text_length_total": 4288
+  },
+  "processing_time_sec": 6.68
+}
+```
+
+- **株式会社SUBARU(正解ランクA)**
+```json
+{
+  "url": "https://www.subaru.co.jp/",
+  "estimated_revenue_class": "C",
+  "estimated_revenue_range": "売り上げ5000億円未満",
+  "confidence": 0.4897,
+  "class_probabilities": {
+    "A": 0.3988,
+    "B": 0.0612,
+    "C": 0.4897,
+    "S": 0.0502
+  },
+  "features_summary": {
+    "pages_crawled": 5,
+    "has_ir_page": true,
+    "has_recruit_page": true,
+    "text_length_total": 6548
+  },
+  "processing_time_sec": 9.51
+}
+```
+
+- **株式会社フジ・メディア・ホールディングス(正解ランクB)**
+```json
+{
+  "url": "https://www.fujimediahd.co.jp/",
+  "estimated_revenue_class": "C",
+  "estimated_revenue_range": "売り上げ5000億円未満",
+  "confidence": 0.6741,
+  "class_probabilities": {
+    "A": 0.0968,
+    "B": 0.2012,
+    "C": 0.6741,
+    "S": 0.0279
+  },
+  "features_summary": {
+    "pages_crawled": 6,
+    "has_ir_page": true,
+    "has_recruit_page": true,
+    "text_length_total": 12028
+  },
+  "processing_time_sec": 12.36
+}
+```
+
+- **日本テレビホールディングス株式会社(正解ランクC)**
+```json
+{
+  "url": "https://www.ntvhd.co.jp/",
+  "estimated_revenue_class": "A",
+  "estimated_revenue_range": "売り上げ1兆円以上10兆円未満",
+  "confidence": 0.781,
+  "class_probabilities": {
+    "A": 0.781,
+    "B": 0.0146,
+    "C": 0.1467,
+    "S": 0.0577
+  },
+  "features_summary": {
+    "pages_crawled": 5,
+    "has_ir_page": false,
+    "has_recruit_page": true,
+    "text_length_total": 842
+  },
+  "processing_time_sec": 4.36
+}
+```
 ## 振り返り
