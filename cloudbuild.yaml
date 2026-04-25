@@ -20,7 +20,10 @@ steps:
       - 'asia-northeast1'
       - '--memory'  
       - '4Gi'
-
+      - '--cpu'
+      - '2'           
+      - '--timeout'
+      - '600'
 images:
   - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/haru-repo/haru-first-app:latest'
 
