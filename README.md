@@ -45,9 +45,8 @@
 
 - **採用モデルの交差検証の結果**
     - **各評価指標値**
-        - Average Accuracy: 0.4039 (± 0.0629)
-        - Macro F1 Score  : 0.3016
-
+      - Average Accuracy: 0.4039 (± 0.0629)
+      - Macro F1 Score  : 0.3016
         | クラス | precision | recall | f1-score | support |
         | :--- | :---: | :---: | :---: | :---: |
         | A | 0.50 | 0.54 | 0.52 | 153 |
@@ -60,7 +59,9 @@
         | **weighted avg** | 0.39 | 0.40 | 0.39 | 448 |
 
     - **混同行列**
-    ![混同行列](/Users/haru/Documents/GitHub/revenue-from-company/data/result_1.png)
+  
+    ![混同行列](/data/result_1.png)
+
 ## テスト結果
 - **三菱商事株式会社(正解ランクS)**
 ```json
