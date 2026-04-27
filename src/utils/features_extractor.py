@@ -44,9 +44,6 @@ class RevenueSpider(scrapy.Spider):
         self.pages_crawled += 1
         category = response.meta.get('category', 'top')
         
-        # ==========================================
-        # 1. crawler.py と完全一致のテキスト抽出
-        # ==========================================
         soup = BeautifulSoup(response.body, 'html.parser')
         
         for script in soup(["script", "style", "header", "footer", "nav", "noscript"]):
@@ -61,9 +58,6 @@ class RevenueSpider(scrapy.Spider):
             if len(self.collected_texts[category]) < 7000:
                 self.collected_texts[category] += " " + clean_text[:7000]
 
-        # ==========================================
-        # 2. crawler.py と完全一致のリンク巡回
-        # ==========================================
         if category == 'top':
             domain = urlparse(response.url).netloc
             
@@ -127,9 +121,13 @@ def run_spider(url, queue):
 # ==========================================
 class FeatureExtractor:
     def __init__(self):
-        print("Loading SentenceTransformer (multilingual-e5-base)...")
-        # 学習時と全く同じモデル(768次元)を使用
-        self.model = SentenceTransformer('intfloat/multilingual-e5-base')
+        print("Loading SentenceTransformer (multilingual-e5-base) from local...")
+        
+        # 変更前: self.model = SentenceTransformer('intfloat/multilingual-e5-base')
+        
+        # 変更後: 明示的にローカルのフォルダパスを指定する
+        local_model_path = "./models/multilingual-e5-base" 
+        self.model = SentenceTransformer(local_model_path)
 
     # 数字抽出のヘルパー関数
     def _get_first_num(self, pattern, text, default=0):

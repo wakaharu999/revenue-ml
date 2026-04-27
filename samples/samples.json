@@ -1,0 +1,116 @@
+[
+  {
+    "url": "https://www.mitsubishicorp.com/jp/ja/",
+    "estimated_revenue_class": "A",
+    "estimated_revenue_range": "売り上げ1兆円以上10兆円未満",
+    "confidence": 0.8601,
+    "class_probabilities": {
+      "A": 0.8601,
+      "B": 0.009,
+      "C": 0.074,
+      "S": 0.057
+    },
+    "features_summary": {
+      "pages_crawled": 4,
+      "has_ir_page": true,
+      "has_recruit_page": false,
+      "text_length_total": 4709
+    },
+    "processing_time_sec": 6.88
+  },
+  {
+    "url": "https://www.nissan-global.com/JP/",
+    "estimated_revenue_class": "C",
+    "estimated_revenue_range": "売り上げ5000億円未満",
+    "confidence": 0.5108,
+    "class_probabilities": {
+      "A": 0.0287,
+      "B": 0.4467,
+      "C": 0.5108,
+      "S": 0.0138
+    },
+    "features_summary": {
+      "pages_crawled": 7,
+      "has_ir_page": true,
+      "has_recruit_page": true,
+      "text_length_total": 5162
+    },
+    "processing_time_sec": 7.63
+  },
+  {
+    "url": "https://www.7andi.com/",
+    "estimated_revenue_class": "A",
+    "estimated_revenue_range": "売り上げ1兆円以上10兆円未満",
+    "confidence": 0.7845,
+    "class_probabilities": {
+      "A": 0.7845,
+      "B": 0.0415,
+      "C": 0.1119,
+      "S": 0.0621
+    },
+    "features_summary": {
+      "pages_crawled": 5,
+      "has_ir_page": true,
+      "has_recruit_page": false,
+      "text_length_total": 4288
+    },
+    "processing_time_sec": 6.68
+  },
+  {
+    "url": "https://www.subaru.co.jp/",
+    "estimated_revenue_class": "C",
+    "estimated_revenue_range": "売り上げ5000億円未満",
+    "confidence": 0.4897,
+    "class_probabilities": {
+      "A": 0.3988,
+      "B": 0.0612,
+      "C": 0.4897,
+      "S": 0.0502
+    },
+    "features_summary": {
+      "pages_crawled": 5,
+      "has_ir_page": true,
+      "has_recruit_page": true,
+      "text_length_total": 6548
+    },
+    "processing_time_sec": 9.51
+  },
+  {
+    "url": "https://www.fujimediahd.co.jp/",
+    "estimated_revenue_class": "C",
+    "estimated_revenue_range": "売り上げ5000億円未満",
+    "confidence": 0.6741,
+    "class_probabilities": {
+      "A": 0.0968,
+      "B": 0.2012,
+      "C": 0.6741,
+      "S": 0.0279
+    },
+    "features_summary": {
+      "pages_crawled": 6,
+      "has_ir_page": true,
+      "has_recruit_page": true,
+      "text_length_total": 12028
+    },
+    "processing_time_sec": 12.36
+  },
+  {
+    "url": "https://www.ntvhd.co.jp/",
+    "estimated_revenue_class": "A",
+    "estimated_revenue_range": "売り上げ1兆円以上10兆円未満",
+    "confidence": 0.781,
+    "class_probabilities": {
+      "A": 0.781,
+      "B": 0.0146,
+      "C": 0.1467,
+      "S": 0.0577
+    },
+    "features_summary": {
+      "pages_crawled": 5,
+      "has_ir_page": false,
+      "has_recruit_page": true,
+      "text_length_total": 842
+    },
+    "processing_time_sec": 4.36
+  }
+]
