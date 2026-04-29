@@ -5,7 +5,7 @@ import pickle
 import numpy as np
 import tensorflow as tf
 from typing import Dict, Any, Tuple
-from src.utils.features_extractor import FeatureExtractor
+from src.features_api.features_extractor import FeatureExtractor
 
 class RevenuePredictor:
     """売上レンジ推定を行う推論パイプラインクラス"""
