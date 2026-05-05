@@ -5,16 +5,16 @@ import os
 import json
 import csv
 import time
-import requests 
-from dotenv import load_dotenv 
+import requests # type: ignore
+from dotenv import load_dotenv # type: ignore
 from urllib.parse import urlparse
 load_dotenv()
 API_KEY = os.getenv("EDB_API_KEY")
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
 # 保存先
-JSON_PATH = "../data/raw_api_data.json"
-CSV_PATH = "../data/company.csv"
+JSON_PATH = "data/raw_api_data.json"
+CSV_PATH = "data/company.csv"
 
 # ==========================================
 # STEP 1: JSONファイルの作成
@@ -24,7 +24,7 @@ def step1_fetch_and_save_json():
         print("【エラー】EDINET_API_KEYが設定されていません。")
         return False
 
-    API_URL = "https://edinetdb.jp/v1/rankings/revenue?limit=1500"
+    API_URL = "https://edinetdb.jp/v1/rankings/revenue?limit=500"
     headers = {"X-API-KEY": API_KEY}
     
     try:
@@ -59,7 +59,7 @@ def step1_fetch_and_save_json():
         return False
 
 def search_official_url_serper(name):
-    query = f"{name} 企業情報" 
+    query = f"{name} 公式サイト" 
     url = "https://google.serper.dev/search"
     
     # SerperAPIに送る設定
@@ -155,9 +155,9 @@ def step2_generate_csv():
             if not name or not revenue:
                 continue
 
-            if revenue >= 10000000:
+            if revenue >= 2000000:
                 rev_class = "S"
-            elif revenue >= 1000000:
+            elif revenue >= 800000:
                 rev_class = "A"
             elif revenue >= 500000:
                 rev_class = "B"
@@ -188,5 +188,5 @@ def step2_generate_csv():
 # 実行部分
 # ==========================================
 if __name__ == "__main__":
-    step1_fetch_and_save_json()
+    #step1_fetch_and_save_json()
     step2_generate_csv()
