@@ -1,146 +1,146 @@
-# step1: EDINETDB APIから企業の売上ランキングデータを500件取得し、JSONファイルに保存するスクリプト
-# step2: 保存したJSONファイルから企業URLと売上ランクを抽出し、CSVファイルに保存するスクリプト
-
+# ==========================================
+# 企業売上データ＆URL収集スクリプト (gBizINFO API版)
+# ==========================================
 import os
 import json
 import csv
 import time
-import requests # type: ignore
-from dotenv import load_dotenv # type: ignore
-from urllib.parse import urlparse
-load_dotenv()
-API_KEY = os.getenv("EDB_API_KEY")
-SERPER_API_KEY = os.getenv("SERPER_API_KEY")
+import requests
+from urllib.parse import quote
+from dotenv import load_dotenv
 
-# 保存先
-JSON_PATH = "data/raw_api_data.json"
-CSV_PATH = "data/company.csv"
+# --- 環境設定 ---
+# .env ファイルからAPIキーを読み込む
+load_dotenv()
+
+EDB_API_KEY = os.getenv("EDB_API_KEY")
+GBIZ_API_KEY = os.getenv("GBIZINFO_API_TOKEN")  # .env では GBIZINFO_API_TOKEN として定義
+
+# --- 保存先パスの設定（絶対パスで迷子を防ぐ） ---
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+JSON_PATH = os.path.join(DATA_DIR, "raw_api_data.json")
+CSV_PATH = os.path.join(DATA_DIR, "company.csv")
 
 # ==========================================
-# STEP 1: JSONファイルの作成
+# STEP 1: EDINETから売上ランキングデータを取得してJSON保存
 # ==========================================
 def step1_fetch_and_save_json():
-    if not API_KEY:
-        print("【エラー】EDINET_API_KEYが設定されていません。")
+    print("--- [STEP 1] EDINET APIから売上データを取得します ---")
+    if not EDB_API_KEY:
+        print("【エラー】.env に EDB_API_KEY が設定されていません。")
         return False
 
     API_URL = "https://edinetdb.jp/v1/rankings/revenue?limit=500"
-    headers = {"X-API-KEY": API_KEY}
+    headers = {"X-API-KEY": EDB_API_KEY}
     
     try:
         response = requests.get(API_URL, headers=headers)
         if response.status_code != 200:
             print(f"【エラー】API取得失敗: ステータスコード {response.status_code}")
-            print(f"詳細: {response.text}")
             return False
 
         data = response.json()
-
-        # データが辞書型かリスト型かに対応
         items = data.get("data", []) if isinstance(data, dict) else data
         extracted_data = []
 
-        # APIのレスポンスから「企業名」と「売上」を抽出
+        # 「企業名」と「売上」を抽出
         for item in items:
             name = item.get("name")
             revenue = item.get("value")  
             extracted_data.append({"name": name, "revenue": revenue})
 
-        # JSONファイルとして保存
-        os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
+        # dataフォルダがなければ作成
+        os.makedirs(DATA_DIR, exist_ok=True)
+        
         with open(JSON_PATH, "w", encoding="utf-8") as f:
             json.dump(extracted_data, f, ensure_ascii=False, indent=2)
         
-        print(f"JSONを保存しました: {JSON_PATH} ({len(extracted_data)}件)")
+        print(f"✨ JSONを保存しました: {JSON_PATH} ({len(extracted_data)}件)\n")
         return True
 
     except Exception as e:
         print(f"【通信エラー】APIへの接続中にエラーが発生しました: {e}")
         return False
 
-def search_official_url_serper(name):
-    query = f"{name} 公式サイト" 
-    url = "https://google.serper.dev/search"
+# ==========================================
+# STEP 2の補助関数: gBizINFOからURLを取得
+# ==========================================
+def get_url_from_gbizinfo(name):
+    """gBizINFO APIを使って企業名からURLを取得する（2ステップ完全版）"""
+    base_url = "https://info.gbiz.go.jp/hojin/v1/hojin"
     
-    # SerperAPIに送る設定
-    payload = json.dumps({
-      "q": query,
-      "gl": "jp",
-      "hl": "ja",
-      "num": 5  # 上位5件を取得
-    })
+    clean_api_key = GBIZ_API_KEY.strip() if GBIZ_API_KEY else ""
+    clean_api_key = clean_api_key.replace('"', '').replace("'", "")
+    
     headers = {
-      'X-API-KEY': SERPER_API_KEY,
-      'Content-Type': 'application/json'
+        "Accept": "application/json",
+        "X-hojinInfo-api-token": clean_api_key
     }
 
-    # リクルートサイト等を弾く用のリスト
-    blacklist = [
-        "wikipedia.org", "rikunabi.com", "mynavi.jp", "doda.jp", "en-japan.com", 
-        "type.jp", "prtimes.jp", "nikkei.com", "toyokeizai.net", "yahoo.co.jp", 
-        "instagram.com", "twitter.com", "x.com", "facebook.com", "tiktok.com", 
-        "youtube.com", "amazon.co.jp", "bing.com", "irbank.net", "baseconnect.in",
-        "macloud.jp", "kabu.com", "shukatsu", "houjin.jp", "syukatsu-kaigi.jp"
-    ]
-    
     try:
-        # POSTリクエストでAPIを叩く
-        response = requests.post(url, headers=headers, data=payload)
+        # 【ステップ1】企業名で検索し、法人番号（corporate_number）を取得
+        search_response = requests.get(base_url, headers=headers, params={"name": name}, timeout=10)
         
-        if response.status_code != 200:
-            print(f" [APIエラー: {response.status_code}] ", end="")
-            return "API_ERROR"
+        if search_response.status_code != 200:
+            print(f" [検索エラー: {search_response.status_code}] ", end="")
+            return "NOT_FOUND"
             
-        data = response.json()
-        items = data.get("organic", [])
+        search_data = search_response.json()
+        hojin_list = search_data.get("hojin-infos", [])
         
-        valid_urls = []
-        for item in items:
-            link = item.get("link", "")
+        if not hojin_list:
+            print(" [ヒットなし] ", end="")
+            return "NOT_FOUND"
             
-            # PDFや採用ページを除外
-            if link.lower().endswith(".pdf"):
-                continue
-            if "career" in link.lower() or "recruit" in link.lower():
-                continue
-                
-            try:
-                domain = urlparse(link).netloc.lower()
-            except:
-                continue
-                
-            is_bad_domain = any(bad in domain for bad in blacklist)
-            
-            if not is_bad_domain:
-                valid_urls.append(link)
-                
-        if valid_urls:
-            return min(valid_urls, key=len)
-            
-    except Exception as e:
-        print(f" [通信エラー: {e}] ", end="")
+        # 完全一致する企業を優先して法人番号を特定
+        target_hojin = next((h for h in hojin_list if h.get("name") == name), hojin_list[0])
+        corp_number = target_hojin.get("corporate_number")
         
-    return "NOT_FOUND"
+        if not corp_number:
+            return "NOT_FOUND"
 
+        # 【ステップ2】取得した法人番号を使って、詳細データ（URL）を取得
+        detail_url = f"{base_url}/{corp_number}"
+        detail_response = requests.get(detail_url, headers=headers, timeout=10)
+        
+        if detail_response.status_code != 200:
+            print(f" [詳細取得エラー: {detail_response.status_code}] ", end="")
+            return "NOT_FOUND"
+            
+        detail_data = detail_response.json()
+        detail_hojin_list = detail_data.get("hojin-infos", [])
+        
+        if not detail_hojin_list:
+            return "NOT_FOUND"
+            
+        # 詳細データの中から company_url を抽出
+        company_url = detail_hojin_list[0].get("company_url")
+        
+        return company_url if company_url else "NOT_FOUND"
+
+    except Exception as e:
+        print(f" [例外エラー: {e}] ", end="")
+        return "ERROR"
 # ==========================================
-# STEP 2: JSONからCSVを作成
+# STEP 2: JSONデータとgBizINFOを組み合わせてCSVを作成
 # ==========================================
 def step2_generate_csv():
-    print("--- [STEP 2] 企業名からURLを検索してCSVを作成します ---")
+    print("--- [STEP 2] gBizINFO APIを使ってURLを取得し、CSVを作成します ---")
 
-    if not SERPER_API_KEY:
-        print("【エラー】SerperのAPIキーが設定されていません。")
+    if not GBIZ_API_KEY:
+        print("【エラー】.env に GBIZ_API_KEY が設定されていません。")
         return
 
     if not os.path.exists(JSON_PATH):
-        print("【エラー】JSONファイルが見つかりません。")
+        print(f"【エラー】{JSON_PATH} が見つかりません。先に Step 1 を実行してください。")
         return
 
     with open(JSON_PATH, "r", encoding="utf-8") as f:
         companies = json.load(f)
 
-    
-    print(f"テストモード: 全 {len(companies)} 件中、最初の {len(companies)} 件だけを処理します...\n")
+    # 保存先フォルダの確認
+    os.makedirs(DATA_DIR, exist_ok=True)
 
     with open(CSV_PATH, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
@@ -148,45 +148,44 @@ def step2_generate_csv():
 
         success_count = 0
         
-        for comp in companies:
+        for i, comp in enumerate(companies):
             name = comp.get("name")
             revenue = comp.get("revenue")
 
-            if not name or not revenue:
+            if not name or revenue is None:
                 continue
 
-            if revenue >= 2000000:
+            # 売上クラスの判定
+            rev_num = int(revenue)
+            if rev_num >= 2000000:
                 rev_class = "S"
-            elif revenue >= 800000:
+            elif rev_num >= 800000:
                 rev_class = "A"
-            elif revenue >= 500000:
+            elif rev_num >= 500000:
                 rev_class = "B"
             else:
                 rev_class = "C"
 
-            print(f"検索中: {name} ... ", end="", flush=True)
-
-            url = search_official_url_serper(name)
+            print(f"[{i+1}/{len(companies)}] 取得中: {name} ... ", end="", flush=True)
             
-            if url == "API_ERROR":
-                print("\n【警告】APIでエラーが発生しました")
-                break
-                
-            if url != "NOT_FOUND":
+            url = get_url_from_gbizinfo(name)
+            
+            if url and url != "NOT_FOUND" and url != "ERROR":
                 print("OK")
                 writer.writerow([name, url, rev_class])
                 success_count += 1
             else:
-                print("見つかりませんでした")
+                print("URLなし")
                 writer.writerow([name, "NOT_FOUND", rev_class])
                 
+            # gBizINFO APIのRate Limit対策 (1秒間に10リクエストまで)
             time.sleep(0.5)
 
-    print(f"\nテスト処理が完了しました。 {success_count} 件のデータを保存しました。")
+    print(f"\n✨ 処理完了: {success_count} 件のURLを取得し、CSVに保存しました！")
 
 # ==========================================
 # 実行部分
 # ==========================================
 if __name__ == "__main__":
-    #step1_fetch_and_save_json()
+    # step1_fetch_and_save_json()
     step2_generate_csv()
