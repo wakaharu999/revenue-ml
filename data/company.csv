@@ -1,16 +1,16 @@
 company_name,url,revenue_class
 トヨタ自動車株式会社,https://global.toyota/,S
 本田技研工業株式会社,https://www.honda.co.jp/,S
-三菱商事株式会社,https://www.mc-ene.com/,S
-伊藤忠商事株式会社,https://www.ick.co.jp/,S
+三菱商事株式会社,https://www.mitsubishicorp.com/jp/ja/,S
+伊藤忠商事株式会社,https://www.itochu.co.jp/ja/,S
 三井物産株式会社,https://www.mitsui.com/jp/ja/,S
 日本電信電話株式会社,https://group.ntt/jp/,S
-株式会社三菱ＵＦＪフィナンシャル・グループ,https://mufg.directanswer.jp/,S
+株式会社三菱ＵＦＪフィナンシャル・グループ,https://www.mufg.jp/,S
 ソニーグループ株式会社,https://www.sme.co.jp/,S
 日産自動車株式会社,https://www.nissan.co.jp/,S
 ＥＮＥＯＳホールディングス株式会社,https://www.eneos.co.jp/,S
 株式会社セブン＆アイ・ホールディングス,https://www.7andi.com/,S
-日本郵政株式会社,https://www.jpos.jp/,S
+日本郵政株式会社,https://www.japanpost.jp/,S
 豊田通商株式会社,https://www.toyotsu-os.com/,S
 株式会社三井住友フィナンシャルグループ,https://www.smfg.co.jp/,S
 イオン株式会社,https://www.aeon.com/,S
@@ -37,21 +37,21 @@ company_name,url,revenue_class
 株式会社アイシン,https://www.aisin.com/jp/,S
 ＪＦＥホールディングス株式会社,https://www.jfe-holdings.co.jp/,S
 ダイキン工業株式会社,https://www.daikin.co.jp/,S
-株式会社ＳＵＢＡＲＵ,https://www.sti.jp/,S
-住友電気工業株式会社,https://www.seiss.co.jp/,S
+株式会社ＳＵＢＡＲＵ,https://www.subaru.co.jp/,S
+住友電気工業株式会社,https://sumitomoelectric.com/jp/,S
 キヤノン株式会社,https://canon.jp/,S
 武田薬品工業株式会社,https://www.takeda.com/jp/,S
-株式会社ブリヂストン,https://www.bscycle.co.jp/,S
+株式会社ブリヂストン,https://www.bridgestone.co.jp/,S
 三菱ケミカルグループ株式会社,https://www.mcgc.com/,S
 関西電力株式会社,https://kepco.jp/,S
-株式会社小松製作所,https://kmt.jp/,S
-株式会社豊田自動織機,https://www.toyota-lf.com/,S
+株式会社小松製作所,https://www.komatsu.jp/ja,S
+株式会社豊田自動織機,https://www.toyota-shokki.co.jp/,S
 積水ハウス株式会社,https://www.sekisuihouse-f.jp/,S
 株式会社メディパルホールディングス,https://www.medipal.co.jp/,S
-中部電力株式会社,https://saiyo.chuden.jp/,S
-株式会社リクルートホールディングス,NOT_FOUND,S
+中部電力株式会社,https://www.chuden.co.jp/,S
+株式会社リクルートホールディングス,https://recruit-holdings.com/ja/,S
 富士通株式会社,https://global.fujitsu/ja-jp,S
-日本たばこ産業株式会社,https://www.clubjt.jp/,S
+日本たばこ産業株式会社,https://www.jti.co.jp/,S
 日本電気株式会社,https://www.nec.com/,S
 株式会社ファーストリテイリング,https://www.fastretailing.com/jp/,S
 いすゞ自動車株式会社,https://isuzu-chubu.jp/,S
@@ -62,10 +62,10 @@ company_name,url,revenue_class
 アルフレッサホールディングス株式会社,https://www.alfresa.com/,S
 アサヒグループホールディングス株式会社,https://www.asahi-gf.co.jp/,S
 三井住友トラストグループ株式会社,https://smtrc.jp/,S
-鹿島建設株式会社,https://jeas.org/id030/,S
-東日本旅客鉄道株式会社,https://www.jre-vts.com/,S
+鹿島建設株式会社,https://www.kajima.co.jp/,S
+東日本旅客鉄道株式会社,https://www.jreast.co.jp/company/,S
 オリックス株式会社,https://www.orix.co.jp/grp/,S
-コスモエネルギーホールディングス株式会社,https://www.cosmo-energy.co.jp/ja/ir.html,S
+コスモエネルギーホールディングス株式会社,https://www.cosmo-energy.co.jp/ja/,S
 三菱自動車工業株式会社,https://www.mitsubishi-motors.co.jp/,S
 東北電力株式会社,https://www.tohoku-epco.co.jp/,S
 東京瓦斯株式会社,https://www.tokyo-gas.co.jp/,S
@@ -73,7 +73,7 @@ company_name,url,revenue_class
 株式会社大林組,https://www.obayashi.co.jp/,S
 ソニーフィナンシャルグループ株式会社,https://www.sonyfg.co.jp/,S
 ニデック株式会社,https://www.nidek.co.jp/,S
-住友化学株式会社,https://www.saiyo-sc.com/,S
+住友化学株式会社,https://www.sumitomo-chem.co.jp/,S
 日本郵船株式会社,https://www.nyk.com/,S
 ＮＩＰＰＯＮ　ＥＸＰＲＥＳＳホールディングス株式会社,https://www.nittsu.co.jp/,S
 東レ株式会社,https://www.toray.co.jp/,S
@@ -81,7 +81,7 @@ company_name,url,revenue_class
 株式会社　神戸製鋼所,https://www.kobelco.co.jp/,S
 阪和興業株式会社,https://www.hanwa.co.jp/,S
 ヤマハ発動機株式会社,https://www.yamaha-motor.co.jp/,S
-株式会社リコー,https://kabutan.jp/,S
+株式会社リコー,https://jp.ricoh.com/,S
 株式会社ゆうちょ銀行,https://www.japanpost.jp/,S
 双日株式会社,https://www.sojitz.com/jp/,S
 楽天グループ株式会社,https://my.rakuten.co.jp/,S
@@ -113,7 +113,7 @@ company_name,url,revenue_class
 王子ホールディングス株式会社,https://www.oji-rd.jp/,A
 日本航空株式会社,https://www.jal.co.jp/,A
 大東建託株式会社,https://www.kentaku.co.jp/,A
-東海旅客鉄道株式会社,https://tkj-i.co.jp/,A
+東海旅客鉄道株式会社,https://company.jr-central.co.jp/,A
 三井化学株式会社,https://www.mck.co.jp/,A
 株式会社　商船三井,https://www.mol.co.jp/,A
 日本ペイントホールディングス株式会社,https://www.nipponpaint.co.jp/,A
@@ -142,13 +142,13 @@ company_name,url,revenue_class
 ＳＢＩホールディングス株式会社,https://www.sbigroup.co.jp/,A
 株式会社電通グループ,https://www.dentsu.co.jp/,A
 日立建機株式会社,https://www.hitachicm.com/jp/ja/,A
-日本ハム株式会社,https://www.fighters.co.jp/,A
+日本ハム株式会社,https://www.nipponham.co.jp/corporate/,A
 東京センチュリー株式会社,https://www.tokyocentury.co.jp/jp/,A
 セイコーエプソン株式会社,https://www.epson.jp/,A
 株式会社レゾナック・ホールディングス,https://www.resonac.com/jp,A
 株式会社オープンハウスグループ,https://openhouse-group.co.jp/,A
 株式会社　大塚商会,https://www.otsuka-shokai.co.jp/,A
-ルネサスエレクトロニクス株式会社,https://ritti-oita.jp/company/detail/459130be-f0ea-451d-b7a6-a5642d3a6389,A
+ルネサスエレクトロニクス株式会社,https://www.renesas.com/ja/,A
 電源開発株式会社,https://www.jpower.co.jp/,A
 山崎製パン株式会社,https://www.yamazakipan.co.jp/,A
 日本酸素ホールディングス株式会社,https://www.tn-sanso.co.jp/,A
@@ -166,7 +166,7 @@ company_name,url,revenue_class
 任天堂株式会社,https://support.nintendo.com/jp/index.html,A
 明治ホールディングス株式会社,https://www.meiji.com/,A
 東急不動産ホールディングス株式会社,https://www.tokyu-fudosan-hd.co.jp/,A
-ダイワボウホールディングス株式会社,https://www.daiwabo-holdings.com/ja/ir.html,A
+ダイワボウホールディングス株式会社,https://www.daiwabo-holdings.com/ja/,A
 株式会社ゼンショーホールディングス,https://www.zfhd.co.jp/,A
 コニカミノルタ株式会社,https://research.konicaminolta.com/jp/,A
 富士電機株式会社,https://www.mt-fuji.gr.jp/,A
@@ -209,7 +209,7 @@ company_name,url,revenue_class
 東洋製罐グループホールディングス株式会社,https://www.tskg-hd.com/,A
 株式会社小糸製作所,https://www.koito.co.jp/,A
 北海道電力株式会社,https://www.hepco.co.jp/,A
-株式会社西武ホールディングス,https://minkabu.jp/stock/9024,A
+株式会社西武ホールディングス,https://www.seibuholdings.co.jp/,A
 太平洋セメント株式会社,https://www.taiheiyo-cement.co.jp/,A
 コカ・コーラボトラーズジャパンホールディングス株式会社,https://www.ccbji.co.jp/news/,A
 株式会社ニッスイ,https://www.nissui.co.jp/,A
@@ -230,7 +230,7 @@ company_name,url,revenue_class
 株式会社ツルハホールディングス,https://www.tsuruha.co.jp/,A
 日本板硝子株式会社,https://nsgss.co.jp/,A
 稲畑産業株式会社,https://www.inabata.co.jp/,A
-ＮＴＮ株式会社,https://www.ntn.co.jp/saiyou/,A
+ＮＴＮ株式会社,https://www.ntn.co.jp/japan/,A
 株式会社アシックス,https://corp.asics.com/jp,A
 株式会社クラレ,https://www.kuraray-eng.jp/,A
 株式会社カネカ,https://www.kaneka.co.jp/,A
@@ -267,19 +267,19 @@ company_name,url,revenue_class
 株式会社きんでん,https://www.kinden.co.jp/,B
 株式会社ニチレイ,https://www.nichirei.co.jp/,B
 伊藤忠食品株式会社,https://isc-giftcard.jp/,B
-みずほリース株式会社,https://www.mizuho-ls.co.jp/ja/ir.html,B
+みずほリース株式会社,https://www.mizuho-ls.co.jp/ja/,B
 名古屋鉄道株式会社,https://www.meitetsu.co.jp/,B
 株式会社光通信,https://www.hikari.co.jp/,B
-エイチ・ツー・オー　リテイリング株式会社,https://www.h2o-retailing.co.jp/ja/ir.html,B
+エイチ・ツー・オー　リテイリング株式会社,https://www.h2o-retailing.co.jp/ja/,B
 キヤノンマーケティングジャパン株式会社,https://canon.jp/biz,B
 株式会社オリエンタルランド,https://www.olc.co.jp/,B
-ＤＯＷＡホールディングス株式会社,https://hd.dowa.co.jp/ja/ir.html,B
+ＤＯＷＡホールディングス株式会社,https://hd.dowa.co.jp/ja/,B
 芙蓉総合リース株式会社,https://www.fgl.co.jp/,B
 シップヘルスケアホールディングス株式会社,https://www.shiphd.co.jp/,B
 株式会社関電工,https://kanden-eng.co.jp/,B
 不二製油株式会社,https://www.goodnoon.jp/,B
 エクシオグループ株式会社,https://www.exeo.co.jp/,B
-ＫＰＰグループホールディングス株式会社,https://www.kpp-gr.com/ja/ir.html,B
+ＫＰＰグループホールディングス株式会社,https://www.kpp-gr.com/ja/,B
 大王製紙株式会社,https://www.elleair.jp/,B
 三菱ロジスネクスト株式会社,https://www.logisnext.com/,B
 株式会社しまむら,https://www.shimamura.gr.jp/,B
@@ -298,7 +298,7 @@ company_name,url,revenue_class
 神鋼商事株式会社,https://www.shinsho.co.jp/,B
 雪印メグミルク株式会社,https://www.meg-snow.com/,B
 コムシスホールディングス株式会社,https://www.comsys-hd.co.jp/,B
-株式会社ＳＢＩ新生銀行,https://lake.jp/,B
+株式会社ＳＢＩ新生銀行,https://www.sbishinseibank.co.jp/,B
 カナデビア株式会社,https://kanadevia-ee.com/,B
 株式会社アークス,https://arcuss.jp/,B
 山九株式会社,https://sankyu-sks.com/,B
@@ -333,7 +333,7 @@ company_name,url,revenue_class
 株式会社山善,https://www.yamazen.co.jp/,B
 ＤＭＧ森精機株式会社,https://www.technium.net/,B
 キユーピー株式会社,https://www.kewpie.com/,B
-スタンレー電気株式会社,https://saiyo-stanley.com/,B
+スタンレー電気株式会社,https://www.stanley-electric.com/jp/,B
 シスメックス株式会社,https://www.sysmex.co.jp/,B
 東洋水産株式会社,https://www.maruchan.co.jp/,B
 サッポロホールディングス株式会社,https://www.sapporoholdings.jp/,B
@@ -351,7 +351,7 @@ company_name,url,revenue_class
 小野薬品工業株式会社,https://p.ono-oncology.jp/,C
 ＵＢＥ株式会社,https://www.ube.com/ube/,C
 ホシザキ株式会社,https://www.hoshizaki.co.jp/,C
-信金中央金庫,https://www.scb-saiyo.com/,C
+信金中央金庫,https://www.shinkin-central-bank.jp/,C
 アスクル株式会社,https://www.askul.co.jp/,C
 株式会社ネクソン,https://jp.nexon.com/,C
 東京建物株式会社,https://tatemono.com/,C
@@ -398,7 +398,7 @@ company_name,url,revenue_class
 株式会社日本触媒,https://www.shokubai.co.jp/ja/,C
 栗田工業株式会社,https://kcr.kurita.co.jp/,C
 東京地下鉄株式会社,https://www.tokyometro.jp/index.html,C
-株式会社ＡＤＥＫＡ,https://kabutan.jp/,C
+株式会社ＡＤＥＫＡ,https://www.adeka.co.jp/,C
 株式会社ＴＢＳホールディングス,https://www.tbs.co.jp/,C
 パーク二四株式会社（定款上の商号　パーク２４株式会社）,https://www.park24.co.jp/,C
 ＢＩＰＲＯＧＹ株式会社,https://www.biprogy.com/,C
@@ -431,7 +431,7 @@ company_name,url,revenue_class
 宝ホールディングス株式会社,https://www.takara.co.jp/,C
 株式会社千葉銀行,https://www.chibabank.co.jp/,C
 ＰＨＣホールディングス株式会社,https://www.phchd.com/jp,C
-江崎グリコ株式会社,https://www.pocky.jp/,C
+江崎グリコ株式会社,https://www.glico.com/jp/,C
 株式会社めぶきフィナンシャルグループ,https://www.mebuki-fg.co.jp/,C
 コクヨ株式会社,https://www.kokuyo.com/,C
 リョーサン菱洋ホールディングス株式会社,https://www.rr-hds.co.jp/,C
@@ -440,14 +440,14 @@ company_name,url,revenue_class
 株式会社ニフコ,https://www.nifco.com/index.html,C
 ＶＴホールディングス株式会社,https://www.vt-holdings.co.jp/,C
 日産車体株式会社,https://www.nissan-shatai.co.jp/,C
-ＯＵＧホールディングス株式会社,https://www.oug.co.jp/ja/ir.html,C
+ＯＵＧホールディングス株式会社,https://www.oug.co.jp/ja/,C
 ａｒｔｉｅｎｃｅ株式会社,https://www.artiencegroup.com/ja/,C
 株式会社タダノ,https://www.tadano.co.jp/ja/,C
 大木ヘルスケアホールディングス株式会社,http://www.ohki-net.co.jp/,C
 株式会社ミツバ,https://www.mskw.co.jp/,C
 武蔵精密工業株式会社,https://kmusashi.co.jp/,C
 株式会社髙松コンストラクショングループ,https://www.takamatsu-cg.co.jp/,C
-鴻池運輸株式会社,https://konoike-job.jp/,C
+鴻池運輸株式会社,https://www.konoike.net/,C
 株式会社トクヤマ,https://www.tokuyama.co.jp/,C
 ケイアイスター不動産株式会社,https://ki-group.jp/,C
 太陽誘電株式会社,https://www.yuden.co.jp/jp/,C
@@ -455,7 +455,7 @@ company_name,url,revenue_class
 株式会社ミツウロコグループホールディングス,https://www.mitsuuroko.com/,C
 株式会社ジーテクト,https://www.g-tekt.jp/,C
 三谷商事株式会社,https://mitani.work/,C
-日鉄ソリューションズ株式会社,https://minkabu.jp/stock/2327,C
+日鉄ソリューションズ株式会社,https://www.nssol.nipponsteel.com/,C
 愛三工業株式会社,https://www.aisan-ind.co.jp/,C
 株式会社内田洋行,https://www.uchida.co.jp/,C
 昭和産業株式会社,https://www.showa-sangyo.co.jp/,C
@@ -467,8 +467,8 @@ company_name,url,revenue_class
 東京製鐵株式会社,https://www.tokyorope.co.jp/,C
 株式会社スクウェア・エニックス・ホールディングス,https://www.square-enix-games.com/ja_JP/documents/media,C
 株式会社テレビ朝日ホールディングス,https://www.tv-asahihd.co.jp/,C
-東海カーボン株式会社,https://minkabu.jp/stock/5301,C
-共英製鋼株式会社,https://saiyo.kyoeisteel.co.jp/,C
+東海カーボン株式会社,https://www.tokaicarbon.co.jp/,C
+共英製鋼株式会社,http://kyoeisteel.co.jp/ja/index.html,C
 カルビー株式会社,https://www.calbee.co.jp/,C
 トラスコ中山株式会社,https://www.trusco.co.jp/,C
 京成電鉄株式会社,https://www.keisei.co.jp/,C
