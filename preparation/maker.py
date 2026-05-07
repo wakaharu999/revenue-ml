@@ -77,15 +77,25 @@ def main():
             p.start()
             
             # crawler.py の CLOSESPIDER_TIMEOUT(45秒) + 余裕をもたせて最大60秒待機
-            p.join(timeout=100)
+            p.join(timeout=140)
 
-            # もし60秒経ってもプロセスが終わっていなければ強制終了
+            # もし140秒経ってもプロセスが終わっていなければ強制終了
             if p.is_alive():
                 print("タイムアウト (強制終了)")
-                p.terminate()
-                p.join()
-                continue
+                p.kill()  
+                p.join(timeout=1) 
 
+            error_record = {
+                    "company_name": company_name,
+                    "revenue_class": revenue_class,
+                    "url": url,
+                    "page_category": "timeout_error",
+                    "text_content": ""
+            }
+            jsonl_file.write(json.dumps(error_record, ensure_ascii=False) + "\n")
+            jsonl_file.flush()  # 即座にファイルに書き込む
+            continue
+        
             # キューから結果を取得してJSONLに書き込む
             if not queue.empty():
                 result = queue.get()

@@ -20,7 +20,7 @@ class RevenueSpider(scrapy.Spider):
         
         # APIとして途中で落ちないようタイムアウトを延長
         'DOWNLOAD_TIMEOUT': 20,
-        'CLOSESPIDER_TIMEOUT': 90,
+        'CLOSESPIDER_TIMEOUT': 120,
         'LOG_LEVEL': 'ERROR',
     }
 
