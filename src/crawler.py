@@ -3,14 +3,13 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 import scrapy
 
-CATEGORIES = ['top', 'about', 'history', 'business', 'ir', 'recruit', 'news']
-
+CATEGORIES = ['top', 'about', 'history', 'business', 'ir', 'recruit', 'news', 'sustainability']
 class RevenueSpider(scrapy.Spider):
     name = "revenue_spider"
     
     custom_settings = {
         'USER_AGENT': 'CompanyInfoCrawler (+https://wakaharu999.com)',
-        'DEPTH_LIMIT': 2,
+        'DEPTH_LIMIT': 3,
         'FEED_EXPORT_ENCODING': 'utf-8',
         'BOT_NAME': 'company_crawler',
         'SPIDER_MODULES': ['company_crawler.spiders'],
@@ -20,8 +19,8 @@ class RevenueSpider(scrapy.Spider):
         'DOWNLOAD_DELAY': 3.0,
         
         # APIとして途中で落ちないようタイムアウトを延長
-        'DOWNLOAD_TIMEOUT': 10,
-        'CLOSESPIDER_TIMEOUT': 45,
+        'DOWNLOAD_TIMEOUT': 20,
+        'CLOSESPIDER_TIMEOUT': 90,
         'LOG_LEVEL': 'ERROR',
     }
 
@@ -52,7 +51,9 @@ class RevenueSpider(scrapy.Spider):
         allowed_domain = response.meta.get('allowed_domain', '')
         
         # 1. HTMLから人間が読めるテキストだけを綺麗に抽出する
-        soup = BeautifulSoup(response.body, 'html.parser')
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for element in soup(["script", "style", "header", "footer", "nav", "noscript", "aside", "form", "iframe"]):
+            element.decompose()
         for script in soup(["script", "style", "header", "footer", "nav", "noscript"]):
             script.decompose()
             
@@ -61,8 +62,8 @@ class RevenueSpider(scrapy.Spider):
 
         # 2. テキストの保存（短すぎる場合はノイズとして捨てる）
         if len(clean_text) > 50:
-            if len(self.collected_texts[category]) < 7000:
-                self.collected_texts[category] += " " + clean_text[:7000]
+            if len(self.collected_texts[category]) < 10000:
+                self.collected_texts[category] += " " + clean_text[:10000]
 
         # 3. ページ内のリンクを探して辿る（トップページから来た時のみ）
         if category == 'top':
@@ -71,6 +72,9 @@ class RevenueSpider(scrapy.Spider):
                 link_text = a_tag.css('::text').get(default='').strip().lower()
 
                 if not link_url:
+                    continue
+
+                if re.search(r'\.(pdf|zip|doc|docx|xls|xlsx|png|jpg|jpeg|gif)$', link_url.lower()):
                     continue
 
                 absolute_url = response.urljoin(link_url)
@@ -91,18 +95,45 @@ class RevenueSpider(scrapy.Spider):
                     )
 
     def _categorize_link(self, url, text):
-        if re.search(r'ir|investor|投資家|財務', url) or re.search(r'ir|投資家', text):
-            return 'ir'
-        elif re.search(r'recruit|career|採用|求人|エントリー', url) or re.search(r'採用|求人|キャリア', text):
-            return 'recruit'
-        elif re.search(r'about|company|profile|corporate|会社|概要', url) or re.search(r'会社|企業|概要', text):
+        # 判定漏れを防ぐため、念のためURLとテキストを小文字化しておく
+        url = url.lower()
+        text = text.lower()
+
+        # 1. 企業情報・理念・トップメッセージ (大幅強化)
+        if re.search(r'about|company|profile|corporate|message|philosophy|vision', url) or \
+           re.search(r'会社|企業|概要|理念|ビジョン|ミッション|メッセージ|ご挨拶|トップ|代表', text):
             return 'about'
-        elif re.search(r'history|沿革|歴史|歩み', url) or re.search(r'沿革|歴史', text):
-            return 'history'
-        elif re.search(r'business|service|solution|事業|サービス', url) or re.search(r'事業|サービス', text):
+
+        # 2. 事業・製品・サービス・実績 (大幅強化)
+        elif re.search(r'business|service|solution|product|works|case', url) or \
+             re.search(r'事業|サービス|ソリューション|製品|プロダクト|実績|事例|強み', text):
             return 'business'
-        elif re.search(r'news|press|release|info|ニュース|お知らせ', url) or re.search(r'ニュース|プレスリリース', text):
+
+        # 3. サステナビリティ・CSR・SDGs (✨新規追加: 大企業ほど情報量が多い=売上予測に超重要)
+        elif re.search(r'sustainability|csr|esg|sdgs|environment', url) or \
+             re.search(r'サステナビリティ|環境|社会|ガバナンス|sdgs|csr', text):
+            return 'sustainability'
+
+        # 4. IR・財務・投資家向け
+        elif re.search(r'ir|investor|finance|highlight', url) or \
+             re.search(r'ir|投資家|財務|業績|決算|ハイライト|株主', text):
+            return 'ir'
+
+        # 5. 採用・求人・働く環境
+        elif re.search(r'recruit|career|jobs|採用|求人|エントリー', url) or \
+             re.search(r'採用|求人|キャリア|働く|新卒|中途', text):
+            return 'recruit'
+
+        # 6. 沿革・歴史
+        elif re.search(r'history|沿革|歴史|歩み|創業', url) or \
+             re.search(r'沿革|歴史|歩み|創業', text):
+            return 'history'
+
+        # 7. ニュース・プレスリリース
+        elif re.search(r'news|press|release|info|topics', url) or \
+             re.search(r'ニュース|お知らせ|プレスリリース|トピックス|最新情報', text):
             return 'news'
+            
         return None
 
     def closed(self, reason):
