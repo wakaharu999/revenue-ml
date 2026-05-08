@@ -24,7 +24,7 @@ def run_spider_process(start_url, temp_file):
 
     try:
         process = CrawlerProcess({'LOG_LEVEL': 'ERROR'})
-        # 🌟 result_queue=queue を temp_file=temp_file に変更
+        
         process.crawl(RevenueSpider, start_url=start_url, temp_file=temp_file)
         process.start()
     except Exception as e:
@@ -66,35 +66,24 @@ def main():
                 print(f"[{i+1}/{len(rows)}] ⏩ スキップ (取得済): {company_name}")
                 continue
 
-            print(f"[{i+1}/{len(rows)}] 🔍 クローリング中: {company_name} ({url}) ... ", end="", flush=True)
-
-            # 🌟 プロセス間通信用のキューを廃止し、一時ファイルのパスを作成
             temp_file = os.path.join(BASE_DIR, "data", f"temp_{i}.json")
+            is_timeout = False
             
-            # クローラーを別プロセスで実行
-            p = multiprocessing.Process(target=run_spider_process, args=(url, temp_file))
-            p.start()
-            
-            p.join(timeout=140)
+            if not os.path.exists(temp_file):
+                p = multiprocessing.Process(target=run_spider_process, args=(url, temp_file))
+                p.start()
+                
+                p.join(timeout=300)  # 5分のタイムアウトを設定
 
-            # もし140秒経ってもプロセスが終わっていなければ強制終了
-            if p.is_alive():
-                print("タイムアウト (強制終了)")
-                p.kill()  
-                p.join(timeout=1) 
+                if p.is_alive():
+                    print("プロセス終了タイムアウト... ", end="")
+                    p.kill()  
+                    p.join(timeout=1) 
+                    is_timeout = True
+            else:
+                print("📦 残存データを発見... ", end="")
 
-                error_record = {
-                        "company_name": company_name,
-                        "revenue_class": revenue_class,
-                        "url": url,
-                        "page_category": "timeout_error",
-                        "text_content": ""
-                }
-                jsonl_file.write(json.dumps(error_record, ensure_ascii=False) + "\n")
-                jsonl_file.flush()
-                continue
-        
-            # 🌟 一時ファイルから結果を取得してJSONLに書き込む
+            # ② ファイルが存在すれば、無事に終わった場合も、タイムアウトした場合もデータを救出する！
             if os.path.exists(temp_file):
                 with open(temp_file, "r", encoding="utf-8") as tf:
                     result = json.load(tf)
@@ -103,7 +92,6 @@ def main():
                 
                 saved_categories = 0
                 for category, text_content in texts_dict.items():
-                    # テキストが空でなければ保存
                     clean_content = text_content.strip()
                     if clean_content:
                         json_record = {
@@ -113,19 +101,36 @@ def main():
                             "page_category": category,
                             "text_content": clean_content
                         }
-                        # jsonl形式で1行ずつ書き込み
                         jsonl_file.write(json.dumps(json_record, ensure_ascii=False) + "\n")
                         saved_categories += 1
                         
                 jsonl_file.flush()
-                print(f"完了 ({saved_categories} カテゴリ保存)")
                 
-                # 🌟 読み込み終わった一時ファイルを削除
+                if is_timeout:
+                    print(f"✨ 救出成功 ({saved_categories} カテゴリ保存)")
+                else:
+                    print(f"完了 ({saved_categories} カテゴリ保存)")
+                
+                # 読み込み終わった一時ファイルを削除
                 os.remove(temp_file)
             else:
-                print("失敗 (データ取得できず)")
+                # ファイルすら作れなかった完全な失敗の時だけエラー記録
+                if is_timeout:
+                    print("失敗 (完全なタイムアウト)")
+                    error_record = {
+                        "company_name": company_name,
+                        "revenue_class": revenue_class,
+                        "url": url,
+                        "page_category": "timeout_error",
+                        "text_content": ""
+                    }
+                    jsonl_file.write(json.dumps(error_record, ensure_ascii=False) + "\n")
+                    jsonl_file.flush()
+                else:
+                    print("失敗 (データ取得できず)")
 
             time.sleep(2)
+            
             
 if __name__ == "__main__":
     # WindowsやmacOSでのmultiprocessingの安全な実行のためのおまじない

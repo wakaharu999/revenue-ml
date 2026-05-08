@@ -19,7 +19,7 @@ class RevenueSpider(scrapy.Spider):
         'CONCURRENT_REQUESTS_PER_DOMAIN': 4,
         'DOWNLOAD_DELAY': 1.0,
         'DOWNLOAD_TIMEOUT': 15,
-        'CLOSESPIDER_TIMEOUT': 120,
+        'CLOSESPIDER_TIMEOUT': 280,
         'LOG_LEVEL': 'ERROR',
     }
 
