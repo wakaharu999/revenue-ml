@@ -11,11 +11,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CSV_PATH = os.path.join(BASE_DIR, "data", "company.csv")
 JSONL_PATH = os.path.join(BASE_DIR, "data", "crawled_data.jsonl")
 
-def run_spider_process(start_url, queue):
+def run_spider_process(start_url, temp_file):
     """
     別プロセスでScrapyクローラーを起動するための関数。
     """
-    
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if BASE_DIR not in sys.path:
         sys.path.append(BASE_DIR)
@@ -24,9 +23,9 @@ def run_spider_process(start_url, queue):
     from src.crawler import RevenueSpider
 
     try:
-        # クローラーの起動
         process = CrawlerProcess({'LOG_LEVEL': 'ERROR'})
-        process.crawl(RevenueSpider, start_url=start_url, result_queue=queue)
+        # 🌟 result_queue=queue を temp_file=temp_file に変更
+        process.crawl(RevenueSpider, start_url=start_url, temp_file=temp_file)
         process.start()
     except Exception as e:
         print(f"\n[Spider Error] {e}")
@@ -69,14 +68,13 @@ def main():
 
             print(f"[{i+1}/{len(rows)}] 🔍 クローリング中: {company_name} ({url}) ... ", end="", flush=True)
 
-            # プロセス間通信用のキューを作成
-            queue = multiprocessing.Queue()
+            # 🌟 プロセス間通信用のキューを廃止し、一時ファイルのパスを作成
+            temp_file = os.path.join(BASE_DIR, "data", f"temp_{i}.json")
             
             # クローラーを別プロセスで実行
-            p = multiprocessing.Process(target=run_spider_process, args=(url, queue))
+            p = multiprocessing.Process(target=run_spider_process, args=(url, temp_file))
             p.start()
             
-            # crawler.py の CLOSESPIDER_TIMEOUT(45秒) + 余裕をもたせて最大60秒待機
             p.join(timeout=140)
 
             # もし140秒経ってもプロセスが終わっていなければ強制終了
@@ -85,20 +83,22 @@ def main():
                 p.kill()  
                 p.join(timeout=1) 
 
-            error_record = {
-                    "company_name": company_name,
-                    "revenue_class": revenue_class,
-                    "url": url,
-                    "page_category": "timeout_error",
-                    "text_content": ""
-            }
-            jsonl_file.write(json.dumps(error_record, ensure_ascii=False) + "\n")
-            jsonl_file.flush()  # 即座にファイルに書き込む
-            continue
+                error_record = {
+                        "company_name": company_name,
+                        "revenue_class": revenue_class,
+                        "url": url,
+                        "page_category": "timeout_error",
+                        "text_content": ""
+                }
+                jsonl_file.write(json.dumps(error_record, ensure_ascii=False) + "\n")
+                jsonl_file.flush()
+                continue
         
-            # キューから結果を取得してJSONLに書き込む
-            if not queue.empty():
-                result = queue.get()
+            # 🌟 一時ファイルから結果を取得してJSONLに書き込む
+            if os.path.exists(temp_file):
+                with open(temp_file, "r", encoding="utf-8") as tf:
+                    result = json.load(tf)
+                
                 texts_dict = result.get("texts", {})
                 
                 saved_categories = 0
@@ -117,15 +117,16 @@ def main():
                         jsonl_file.write(json.dumps(json_record, ensure_ascii=False) + "\n")
                         saved_categories += 1
                         
+                jsonl_file.flush()
                 print(f"完了 ({saved_categories} カテゴリ保存)")
+                
+                # 🌟 読み込み終わった一時ファイルを削除
+                os.remove(temp_file)
             else:
                 print("失敗 (データ取得できず)")
 
             time.sleep(2)
-
-    print("\n🎉 すべてのクローリング処理が完了しました！")
-    print(f"出力先: {JSONL_PATH}")
-
+            
 if __name__ == "__main__":
     # WindowsやmacOSでのmultiprocessingの安全な実行のためのおまじない
     multiprocessing.freeze_support()
