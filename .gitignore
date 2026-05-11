@@ -1,7 +1,17 @@
+# Python・環境系
 __pycache__/
-.env
-.ipynb_checkpoints/
-node_modules/
-data/crawled_data.jsonl
 .venv/
+.ipynb_checkpoints/
+.env
+
+node_modules/
+
+# データ・モデル系（重いファイル）
+data/crawled_data.jsonl
+data/splitted_data.csv
+data/saved_model/
+
+# OS・エディタ系（追加おすすめ）
+.DS_Store
 .vscode/
+*.log
