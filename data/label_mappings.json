@@ -1,0 +1,19 @@
+{
+  "revenue2id": {
+    "A": 0,
+    "B": 1,
+    "C": 2,
+    "D": 3,
+    "S": 4
+  },
+  "category2id": {
+    "about": 0,
+    "business": 1,
+    "history": 2,
+    "ir": 3,
+    "news": 4,
+    "recruit": 5,
+    "sustainability": 6,
+    "top": 7
+  }
+}

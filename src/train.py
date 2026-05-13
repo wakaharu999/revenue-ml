@@ -1,313 +1,201 @@
-"""
-本番用モデル訓練スクリプト
-Model 2 (Text + Structural Features Late Fusion) を全データで学習し、
-SavedModel 形式でモデルと関連ファイルを保存
-"""
-
+import sys
 import os
-import json
-import pickle
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
+
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from transformers import AutoTokenizer, get_linear_schedule_with_warmup
+from torch.optim import AdamW
 import pandas as pd
+from sklearn.model_selection import train_test_split
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras # type: ignore
-from tensorflow.keras import layers # type: ignore
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import accuracy_score, f1_score, classification_report
 
-# ============================================================
-# 1. 設定
-# ============================================================
-RANDOM_SEED = 333
-DATA_DIR = os.path.join(os.path.dirname(__file__), '../data')
-MODEL_DIR = os.path.join(os.path.dirname(__file__), '../models/revenue_model')
-SAVED_MODEL_DIR = os.path.join(MODEL_DIR, 'tf_model')
-EPOCHS = 100
-BATCH_SIZE = 32
-LEARNING_RATE = 0.001
-VALIDATION_SPLIT = 0.2
+from src.dataset import CompanyPageDataset, custom_collate_fn
+from src.model import HierarchicalAttentionBERT
 
-# 乱数シード設定
-tf.keras.utils.set_random_seed(RANDOM_SEED)
-np.random.seed(RANDOM_SEED)
+# --- パスの設定 ---
+INPUT_CSV = os.path.join(BASE_DIR, "data", "splitted_dataset.csv") # ※ファイル名が正しいか確認してください
+MODEL_SAVE_DIR = os.path.join(BASE_DIR, "data", "saved_model")
 
-# ============================================================
-# 2. データの読み込みと前処理
-# ============================================================
-def load_and_prepare_data():
-    """データを読み込み、テキストベクトル・構造特徴量を抽出"""
-    print("📂 Loading data...")
+# --- ハイパーパラメータ ---
+MODEL_NAME = "cl-tohoku/bert-base-japanese-v3"
+BATCH_SIZE = 1 # メモリが溢れてしまったので少なく
+ACCUMULATION_STEPS = 16
+EPOCHS = 3
+LEARNING_RATE = 2e-5
+
+# 🌟 新規追加：企業単位のアンサンブル評価関数
+def validate_ensemble(model, val_loader, device, criterion):
+    model.eval()
+    company_predictions = {} 
+    company_labels = {}      
+    total_val_loss = 0.0
+
+    with torch.no_grad():
+        for batch in val_loader:
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            chunk_mask = batch['chunk_mask'].to(device)
+            category_ids = batch['category_ids'].to(device)
+            labels = batch['labels'].to(device)
+            names = batch['company_names'] # dataset.pyで追加した名前情報
+
+            logits = model(input_ids, attention_mask, chunk_mask, category_ids)
+            
+            # Lossの計算
+            loss = criterion(logits, labels)
+            total_val_loss += loss.item()
+
+            probs = torch.softmax(logits, dim=1)
+
+            # 企業ごとに確率をストックする
+            for i, name in enumerate(names):
+                if name not in company_predictions:
+                    company_predictions[name] = []
+                    company_labels[name] = labels[i].item()
+                company_predictions[name].append(probs[i].cpu().numpy())
+
+    # 企業ごとの平均アンサンブル
+    correct = 0
+    for name, pred_list in company_predictions.items():
+        avg_prob = np.mean(pred_list, axis=0) # ページごとの確率を平均
+        final_pred = np.argmax(avg_prob)      # 最も高いクラスを最終予測とする
+        if final_pred == company_labels[name]:
+            correct += 1
+            
+    avg_val_loss = total_val_loss / len(val_loader)
+    ensemble_acc = correct / len(company_predictions)
     
-    # Parquet ファイルを読み込み
-    df = pd.read_parquet(os.path.join(DATA_DIR, 'train_features.parquet'))
-    df_tfidf = pd.read_parquet(os.path.join(DATA_DIR, 'tfidf_features.parquet'))
-    
-    # 不要な列を削除
-    cols_to_drop = [c for c in ['revenue_class', 'url', 'page_category'] 
-                    if c in df_tfidf.columns]
-    df_tfidf_clean = df_tfidf.drop(columns=cols_to_drop)
-    
-    # 企業名でインナージョイン
-    df_merged = pd.merge(df, df_tfidf_clean, on='company_name', how='inner')
-    
-    print(f"✓ Merged data shape: {df_merged.shape}")
-    
-    # テキストベクトルの抽出（HuggingFace の _vec_ カラム）
-    hf_cols = [c for c in df_merged.columns 
-               if '_vec_' in c and not c.startswith('tfidf_vec_')]
-    X_text = df_merged[hf_cols].fillna(0).to_numpy(dtype=np.float32)
-    
-    # 構造特徴量の抽出
-    struct_cols = [
-        c for c in df_merged.columns 
-        if not c.startswith('tfidf_vec_') 
-        and '_vec_' not in c 
-        and c not in ['company_name', 'revenue_class', 'url', 'page_category']
-        and pd.api.types.is_numeric_dtype(df_merged[c])
-    ]
-    X_struct = df_merged[struct_cols].fillna(0).to_numpy(dtype=np.float32)
-    
-    # ラベルエンコーディング
-    le = LabelEncoder()
-    y = le.fit_transform(df_merged['revenue_class'])
-    y = np.array(y, dtype=np.int32)
-    
-    num_classes = len(le.classes_)
-    
-    print(f"✓ Text vectors shape       : {X_text.shape}")
-    print(f"✓ Structural features shape: {X_struct.shape}")
-    print(f"✓ Number of classes       : {num_classes}")
-    print(f"✓ Classes                 : {le.classes_}")
-    print(f"✓ Text vector columns     : {len(hf_cols)}")
-    print(f"✓ Structural columns      : {len(struct_cols)}")
-    
-    return X_text, X_struct, y, le, struct_cols, hf_cols, num_classes
+    return avg_val_loss, ensemble_acc
 
 
-# ============================================================
-# 3. Model 2: Two-Tower Late Fusion Architecture
-# ============================================================
-def build_model_2(text_dim, struct_dim, num_classes):
-    """
-    Model 2: テキストと構造特徴量を独立して処理してから結合する融合モデル
-    
-    Args:
-        text_dim: テキストベクトルの次元数
-        struct_dim: 構造特徴量の次元数
-        num_classes: クラス数
-        
-    Returns:
-        keras.Model: コンパイル済みモデル
-    """
-    # --- 入力層 ---
-    text_input = keras.Input(shape=(text_dim,), name="text_vectors")
-    struct_input = keras.Input(shape=(struct_dim,), name="structural_features")
-    
-    # --- テキスト処理用MLP ---
-    x_text = layers.Dense(256, activation="relu")(text_input)
-    x_text = layers.BatchNormalization()(x_text)
-    x_text = layers.Dropout(0.3)(x_text)
-    
-    x_text = layers.Dense(64, activation="relu")(x_text)
-    x_text = layers.BatchNormalization()(x_text)
-    x_text = layers.Dropout(0.3)(x_text)
-    
-    # --- 構造特徴量処理用MLP ---
-    x_struct = layers.Dense(64, activation="relu")(struct_input)
-    x_struct = layers.BatchNormalization()(x_struct)
-    x_struct = layers.Dropout(0.2)(x_struct)
-    
-    # --- 結合 (Late Fusion) ---
-    combined = layers.Concatenate(name="late_fusion")([x_text, x_struct])
-    
-    # --- 結合後のMLP ---
-    z = layers.Dense(256, activation="relu")(combined)
-    z = layers.BatchNormalization()(z)
-    z = layers.Dropout(0.4)(z)
-    
-    outputs = layers.Dense(num_classes, activation="softmax")(z)
-    
-    # モデルのコンパイル
-    model = keras.Model(inputs=[text_input, struct_input], outputs=outputs)
-    model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),
-        loss="sparse_categorical_crossentropy",
-        metrics=["accuracy"]
-    )
-    
-    return model
-
-
-# ============================================================
-# 4. モデルの訓練
-# ============================================================
-def train_model(X_text, X_struct, y, num_classes):
-    """
-    モデル2を全データで訓練
-    
-    Args:
-        X_text: テキストベクトル配列
-        X_struct: 構造特徴量配列
-        y: ラベル配列
-        num_classes: クラス数
-        
-    Returns:
-        model: 訓練済みモデル
-        scaler: 構造特徴量の正規化器
-    """
-    print("\n🚀 Training Model 2 (Late Fusion: Text + Structural Features)...")
-    
-    # 構造特徴量の正規化（情報漏洩防止のため全データで fittingしない）
-    # 本番運用では、全データで fit_transform するのが標準
-    scaler = StandardScaler()
-    X_struct_scaled = scaler.fit_transform(X_struct)
-    
-    # モデルのビルド
-    model = build_model_2(X_text.shape[1], X_struct.shape[1], num_classes)
-    
-    # 早期停止の設定
-    early_stopping = keras.callbacks.EarlyStopping(
-        monitor='val_loss',
-        patience=15,
-        restore_best_weights=True,
-        verbose=1
-    )
-    
-    # 訓練
-    history = model.fit(
-        {"text_vectors": X_text, "structural_features": X_struct_scaled},
-        y,
-        validation_split=VALIDATION_SPLIT,
-        epochs=EPOCHS,
-        batch_size=BATCH_SIZE,
-        callbacks=[early_stopping],
-        verbose=1
-    )
-    
-    print("✓ Training completed")
-    
-    return model, scaler
-
-
-# ============================================================
-# 5. モデルと関連ファイルの保存
-# ============================================================
-def save_model_artifacts(model, scaler, le, struct_cols, hf_cols, num_classes):
-    """
-    モデルと関連ファイルを保存
-    
-    Args:
-        model: 訓練済みモデル
-        scaler: 構造特徴量の正規化器
-        le: ラベルエンコーダー
-        struct_cols: 構造特徴量のカラム名リスト
-        hf_cols: テキストベクトルのカラム名リスト
-        num_classes: クラス数
-    """
-    print("\n💾 Saving model artifacts...")
-    
-    # モデルディレクトリの作成
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    
-    # 1. TensorFlow モデルを SavedModel 形式で保存
-    print(f"  → Saving SavedModel to {SAVED_MODEL_DIR}")
-    model.save(SAVED_MODEL_DIR, save_format='tf')
-    
-    # 2. LabelEncoder を保存
-    le_path = os.path.join(MODEL_DIR, 'label_encoder.pkl')
-    with open(le_path, 'wb') as f:
-        pickle.dump(le, f)
-    print(f"  ✓ Label encoder saved: {le_path}")
-    
-    # 3. StandardScaler を保存
-    scaler_path = os.path.join(MODEL_DIR, 'scaler.pkl')
-    with open(scaler_path, 'wb') as f:
-        pickle.dump(scaler, f)
-    print(f"  ✓ Scaler saved: {scaler_path}")
-    
-    # 4. メタデータ（設定）を JSON で保存
-    metadata = {
-        "model_name": "revenue_prediction_model_v2",
-        "model_type": "two_tower_late_fusion",
-        "description": "Text + Structural Features Late Fusion Model for Revenue Classification",
-        "num_classes": num_classes,
-        "classes": le.classes_.tolist(),
-        "text_vector_dim": len(hf_cols),
-        "structural_features_dim": len(struct_cols),
-        "structural_feature_columns": struct_cols,
-        "text_vector_columns": hf_cols,
-        "random_seed": RANDOM_SEED,
-        "training_config": {
-            "epochs": EPOCHS,
-            "batch_size": BATCH_SIZE,
-            "learning_rate": LEARNING_RATE,
-            "validation_split": VALIDATION_SPLIT
-        },
-        "architecture": {
-            "text_tower": {
-                "layers": [
-                    {"type": "Dense", "units": 256, "activation": "relu"},
-                    {"type": "BatchNormalization"},
-                    {"type": "Dropout", "rate": 0.3},
-                    {"type": "Dense", "units": 64, "activation": "relu"},
-                    {"type": "BatchNormalization"},
-                    {"type": "Dropout", "rate": 0.3}
-                ]
-            },
-            "struct_tower": {
-                "layers": [
-                    {"type": "Dense", "units": 64, "activation": "relu"},
-                    {"type": "BatchNormalization"},
-                    {"type": "Dropout", "rate": 0.2}
-                ]
-            },
-            "fusion": {
-                "method": "late_fusion_concatenate"
-            },
-            "output_tower": {
-                "layers": [
-                    {"type": "Dense", "units": 256, "activation": "relu"},
-                    {"type": "BatchNormalization"},
-                    {"type": "Dropout", "rate": 0.4},
-                    {"type": "Dense", "units": num_classes, "activation": "softmax"}
-                ]
-            }
-        }
-    }
-    
-    metadata_path = os.path.join(MODEL_DIR, 'model_config.json')
-    with open(metadata_path, 'w') as f:
-        json.dump(metadata, f, indent=2, ensure_ascii=False)
-    print(f"  ✓ Model config saved: {metadata_path}")
-    
-    print("\n✅ All artifacts saved successfully!")
-    print(f"   Model directory: {MODEL_DIR}")
-    print(f"   SavedModel path: {SAVED_MODEL_DIR}")
-
-
-
-# ============================================================
-# 7. メイン処理
-# ============================================================
 def main():
-    """メイン処理"""
-    print("="*60)
-    print("🤖 Model Training Pipeline - Model 2 (Late Fusion)")
-    print("="*60)
-    
-    # データの読み込み
-    X_text, X_struct, y, le, struct_cols, hf_cols, num_classes = load_and_prepare_data()
-    
-    # モデルの訓練
-    model, scaler = train_model(X_text, X_struct, y, num_classes)
-    
-    # モデルと関連ファイルの保存
-    save_model_artifacts(model, scaler, le, struct_cols, hf_cols, num_classes)
-    
-    print("\n" + "="*60)
-    print("✨ Training pipeline completed successfully!")
-    print("="*60)
+    print("---  AIの学習（Training）を開始します ---")
 
+    # 1. デバイスの設定
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+        print("🍏 Apple Silicon GPU (MPS) を使用します")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+        print("🟢 NVIDIA GPU (CUDA) を使用します")
+    else:
+        device = torch.device("cpu")
+        print("⚪ CPU を使用します。")
+
+    # 2. データの準備と分割
+    print("データを読み込み中...")
+    df = pd.read_csv(INPUT_CSV)
+    
+    import json
+    # ラベルエンコーディング：文字列のラベルを数値に変換
+    unique_revenues = sorted(df['revenue_class'].astype(str).unique().tolist())
+    revenue2id = {label: idx for idx, label in enumerate(unique_revenues)}
+    df['label'] = df['revenue_class'].astype(str).map(revenue2id)
+
+    unique_categories = sorted(df['page_category'].astype(str).unique().tolist())
+    category2id = {label: idx for idx, label in enumerate(unique_categories)}
+    df['category_id'] = df['page_category'].astype(str).map(category2id)
+
+    # 辞書を保存しておきます
+    os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
+    with open(os.path.join(BASE_DIR, "data", "label_mappings.json"), 'w', encoding='utf-8') as f:
+        json.dump({"revenue2id": revenue2id, "category2id": category2id}, f, ensure_ascii=False, indent=2)
+
+    # データリークを防ぐため「企業名」で分割
+    unique_companies = df['company_name'].unique()
+    train_companies, val_companies = train_test_split(unique_companies, test_size=0.2, random_state=42)
+    
+    train_df = df[df['company_name'].isin(train_companies)]
+    val_df = df[df['company_name'].isin(val_companies)]
+    print(f"学習用: {len(train_companies)}社 / 検証用: {len(val_companies)}社")
+
+    # 3. データセットとデータローダーの作成
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    
+    train_dataset = CompanyPageDataset(train_df, tokenizer)
+    val_dataset = CompanyPageDataset(val_df, tokenizer)
+
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=custom_collate_fn)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=custom_collate_fn)
+
+    # 4. モデルの準備
+    num_classes = len(df['revenue_class'].unique())
+    num_categories = len(df['page_category'].unique())
+    
+    model = HierarchicalAttentionBERT(
+        model_name=MODEL_NAME, 
+        num_categories=num_categories, 
+        num_classes=num_classes
+    )
+    model.to(device)
+
+    # 5. オプティマイザと損失関数の設定
+    optimizer = AdamW(model.parameters(), lr=LEARNING_RATE)
+    total_steps = len(train_loader) * EPOCHS
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
+    criterion = nn.CrossEntropyLoss()
+
+    # 6. 学習ループ
+    best_val_acc = 0.0
+    os.makedirs(MODEL_SAVE_DIR, exist_ok=True)
+
+    for epoch in range(EPOCHS):
+        print(f"\n======== Epoch {epoch+1} / {EPOCHS} ========")
+        
+        # --- 🏋️‍♂️ トレーニングフェーズ ---
+        model.train()
+        total_loss = 0
+        model.zero_grad() # 🌟 修正: エポックの最初と更新直後だけリセットする
+        
+        for step, batch in enumerate(train_loader):
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            chunk_mask = batch['chunk_mask'].to(device)
+            category_ids = batch['category_ids'].to(device)
+            labels = batch['labels'].to(device)
+
+            # 順伝播（予測）
+            logits = model(input_ids, attention_mask, chunk_mask, category_ids)
+            
+            # 誤差計算と逆伝播
+            loss = criterion(logits, labels)
+            loss = loss / ACCUMULATION_STEPS # 16回分溜めるために割る
+            loss.backward()
+
+            total_loss += loss.item() * ACCUMULATION_STEPS
+
+            # パラメータの更新
+            if (step + 1) % ACCUMULATION_STEPS == 0 or (step + 1) == len(train_loader):
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step()
+                scheduler.step()
+                model.zero_grad() # 🌟 修正: 溜め込んで更新した後にリセット
+
+            # 🌟 修正: ログ表示時は元のスケールに戻して見やすくする
+            if step % 10 == 0 and step > 0:
+                print(f"  Batch {step}/{len(train_loader)} - Loss: {loss.item() * ACCUMULATION_STEPS:.4f}")
+
+        avg_train_loss = total_loss / len(train_loader)
+        print(f"🔹 Average Training Loss: {avg_train_loss:.4f}")
+
+        # --- 🧪 バリデーション（検証）フェーズ ---
+        # 🌟 修正: 新しく作ったアンサンブル関数を呼び出す
+        val_loss, val_acc = validate_ensemble(model, val_loader, device, criterion)
+        
+        print(f"🔸 Validation Loss: {val_loss:.4f} | Ensemble Accuracy: {val_acc:.4f}")
+
+        # 最高精度のモデルを保存
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            save_path = os.path.join(MODEL_SAVE_DIR, "model.pt")
+            torch.save(model.state_dict(), save_path)
+            print(f"✨ 精度が向上しました！モデルを保存: {save_path}")
+
+    print("\n🎉 全ての学習が完了しました！")
 
 if __name__ == "__main__":
     main()
