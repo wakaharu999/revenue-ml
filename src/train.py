@@ -71,6 +71,10 @@ def validate_ensemble(model, val_loader, device, criterion):
     
     return avg_val_loss, ensemble_acc
 
+        # 順伝播
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+        _, preds = torch.max(outputs, dim=1)
+        loss = loss_fn(outputs, labels)
 
 def main():
     print("---  AIの学習（Training）を開始します ---")

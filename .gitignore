@@ -9,7 +9,7 @@ node_modules/
 # データ・モデル系（重いファイル）
 data/crawled_data.jsonl
 data/splitted_data.csv
-models/model.pt
+models/
 
 # OS・エディタ系（追加おすすめ）
 .DS_Store
