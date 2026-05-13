@@ -121,9 +121,9 @@ def main():
     cm = confusion_matrix(y_true, y_pred)
     plt.figure(figsize=(8, 6))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=target_names, yticklabels=target_names)
-    plt.ylabel('True Class (実際の収益)')
-    plt.xlabel('Predicted Class (AIの予測)')
-    plt.title('Confusion Matrix (混同行列)')
+    plt.ylabel('True Class')
+    plt.xlabel('Predicted Class')
+    plt.title('Confusion Matrix')
     plt.tight_layout()
     plt.savefig(OUTPUT_IMG)
     
