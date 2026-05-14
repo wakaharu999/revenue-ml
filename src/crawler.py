@@ -17,10 +17,10 @@ class RevenueSpider(scrapy.Spider):
     
         'ROBOTSTXT_OBEY': True,
         'CONCURRENT_REQUESTS_PER_DOMAIN': 4,
-        'DOWNLOAD_DELAY': 1.0,
+        'DOWNLOAD_DELAY': 0.5,
         'DOWNLOAD_TIMEOUT': 15,
         'CLOSESPIDER_TIMEOUT': 280,
-        'LOG_LEVEL': 'ERROR',
+        'LOG_LEVEL': 'INFO',
     }
 
     def __init__(self, start_url=None, temp_file=None, *args, **kwargs):
@@ -141,14 +141,14 @@ class RevenueSpider(scrapy.Spider):
 
     def closed(self, reason):
         import json
-        # 🌟 Queueへのputをやめて、一時ファイルに書き出す
         if self.temp_file:
+            found_categories = [cat for cat, text in self.collected_texts.items() if len(text) > 0]
+
             data = {
                 'texts': self.collected_texts,
                 'summary': {
                     'pages_crawled': self.pages_crawled,
-                    'has_ir_page': len(self.collected_texts['ir']) > 0,
-                    'has_recruit_page': len(self.collected_texts['recruit']) > 0,
+                    'found_categories': found_categories,  # 例: ['top', 'about', 'recruit']
                     'text_length_total': sum(len(t) for t in self.collected_texts.values())
                 }
             }

@@ -8,11 +8,10 @@ from src.predict import RevenuePredictor
 app = FastAPI(title="Revenue Range Estimation API")
 
 # ==========================================
-# 1. モデルと資産のロード（起動時に1回）
+# 1. モデルロード（起動時に1回）
 # ==========================================
-# インスタンス化することで、内部の __init__ が走りモデルがメモリにロードされます
 try:
-    predictor = RevenuePredictor(model_dir="models/models")
+   predictor = RevenuePredictor(model_dir="models")
 except RuntimeError as e:
     # 起動時にモデルが読み込めない場合はフェイルファストさせる
     raise e
@@ -40,7 +39,7 @@ def health():
     return {"status": "healthy"}
 
 @app.post("/estimate", response_model=EstimateResponse)
-async def estimate(request: EstimateRequest):
+def estimate(request: EstimateRequest):
     url_str = str(request.url)
 
     try:

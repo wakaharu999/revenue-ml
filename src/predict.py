@@ -73,42 +73,34 @@ class RevenuePredictor:
             print(f"Error loading assets: {e}")
             raise RuntimeError("モデルのロードに失敗しました。model.pt や label_mappings.json の配置を確認してください。")
 
-    def _preprocess_texts(self, collected_texts: Dict[str, str], max_chunks=4, max_len=512):
-        """クローリングしたテキストをBERTの入力テンソルに変換する"""
-        num_categories = len(self.category2id)
+    def _preprocess_single_page(self, text: str, cat_idx: int, max_chunks=8, max_len=512):
+        """1ページ分のテキストをチャンク分割して、モデルの入力形式（3次元）に変換する"""
+        # 文字列をざっくりチャンク分割（1チャンク約400文字目安）
+        chunks_text = [text[i:i+400] for i in range(0, len(text), 400)][:max_chunks]
+        num_chunks = len(chunks_text)
         
-        # テンソルの初期化
-        input_ids = torch.zeros((1, num_categories, max_chunks, max_len), dtype=torch.long)
-        attention_mask = torch.zeros((1, num_categories, max_chunks, max_len), dtype=torch.long)
-        chunk_mask = torch.zeros((1, num_categories, max_chunks), dtype=torch.float)
-        category_ids_tensor = torch.zeros((1, num_categories), dtype=torch.long)
+        # モデルが要求する (B, N, S) つまり (1, max_chunks, max_len) のテンソルを準備
+        input_ids = torch.zeros((1, max_chunks, max_len), dtype=torch.long)
+        attention_mask = torch.zeros((1, max_chunks, max_len), dtype=torch.long)
+        chunk_mask = torch.zeros((1, max_chunks), dtype=torch.float)
+        category_ids_tensor = torch.tensor([cat_idx], dtype=torch.long) # (1,)
         
-        for cat_name, text in collected_texts.items():
-            if cat_name not in self.category2id:
-                continue
-                
-            cat_idx = self.category2id[cat_name]
-            category_ids_tensor[0, cat_idx] = cat_idx
+        for chunk_idx, chunk_str in enumerate(chunks_text):
+            encoded = self.tokenizer(
+                chunk_str,
+                max_length=max_len,
+                padding='max_length',
+                truncation=True,
+                return_tensors='pt'
+            )
+            input_ids[0, chunk_idx] = encoded['input_ids'][0]
+            attention_mask[0, chunk_idx] = encoded['attention_mask'][0]
+            chunk_mask[0, chunk_idx] = 1.0 # 有効なチャンク
             
-            if not text.strip():
-                continue # テキストが無い場合はゼロ埋めのまま
-                
-            # 文字列をざっくりチャンク分割（1チャンク約400文字目安）
-            chunks_text = [text[i:i+400] for i in range(0, len(text), 400)][:max_chunks]
-            
-            for chunk_idx, chunk_str in enumerate(chunks_text):
-                encoded = self.tokenizer(
-                    chunk_str,
-                    max_length=max_len,
-                    padding='max_length',
-                    truncation=True,
-                    return_tensors='pt'
-                )
-                input_ids[0, cat_idx, chunk_idx] = encoded['input_ids'][0]
-                attention_mask[0, cat_idx, chunk_idx] = encoded['attention_mask'][0]
-                chunk_mask[0, cat_idx, chunk_idx] = 1.0 # 有効なチャンクとしてフラグを立てる
-                
-        return input_ids.to(self.device), attention_mask.to(self.device), chunk_mask.to(self.device), category_ids_tensor.to(self.device)
+        return (input_ids.to(self.device), 
+                attention_mask.to(self.device), 
+                chunk_mask.to(self.device), 
+                category_ids_tensor.to(self.device))
 
     def predict(self, url: str) -> Tuple[Dict[str, Any], float]:
         """URLを受け取り、推論結果の辞書と処理時間を返す"""
@@ -122,19 +114,19 @@ class RevenuePredictor:
 
         p = Process(target=run_spider, args=(url, temp_file_path))
         p.start()
-        p.join(timeout=60) # 余裕を持って60秒
+        p.join(timeout=120) 
         
         if p.is_alive():
             p.terminate()
             p.join()
-            os.remove(temp_file_path)
+            if os.path.exists(temp_file_path): os.remove(temp_file_path)
             raise ValueError("クローリングがタイムアウトしました。")
 
         try:
             with open(temp_file_path, 'r', encoding='utf-8') as f:
                 crawl_result = json.load(f)
         except Exception:
-            os.remove(temp_file_path)
+            if os.path.exists(temp_file_path): os.remove(temp_file_path)
             raise ValueError("クローリングに失敗したか、有効なデータが取得できませんでした。")
         finally:
             if os.path.exists(temp_file_path):
@@ -144,38 +136,52 @@ class RevenuePredictor:
         summary = crawl_result.get('summary', {})
 
         # ----------------------------------------
-        # Step 2: 前処理と推論
+        # Step 2: ページごとの推論とアンサンブル（平均化）
         # ----------------------------------------
-        input_ids, att_mask, c_mask, cat_ids = self._preprocess_texts(collected_texts)
+        all_probs = []
 
         with torch.no_grad():
-            # 自動混合精度 (AMP) で推論速度を最適化
-            if self.device.type == 'cuda':
-                with torch.autocast(device_type='cuda'):
-                    logits = self.model(input_ids, att_mask, c_mask, cat_ids)
-            else:
-                logits = self.model(input_ids, att_mask, c_mask, cat_ids)
+            for cat_name, text in collected_texts.items():
+                if not text.strip() or cat_name not in self.category2id:
+                    continue
+                    
+                cat_idx = self.category2id[cat_name]
+                # 🌟 4つの引数をちゃんと受け取ってモデルに渡す
+                inputs = self._preprocess_single_page(text, cat_idx)
                 
-            probs = torch.softmax(logits, dim=1)[0].cpu().numpy()
+                if self.device.type == 'cuda':
+                    with torch.autocast(device_type='cuda'):
+                        outputs = self.model(*inputs)
+                else:
+                    outputs = self.model(*inputs)
+                
+                # ロジットから確率に変換して保存
+                logits = outputs[0] if isinstance(outputs, tuple) else outputs
+                probs = torch.softmax(logits, dim=1)[0].cpu().numpy()
+                all_probs.append(probs)
+
+        # 🌟 全ページの予測確率の平均（アンサンブル）をとって最終決定！
+        if not all_probs:
+            raise ValueError("有効なテキストデータが抽出できませんでした。")
+            
+        final_probs = np.mean(all_probs, axis=0)
 
         # ----------------------------------------
         # Step 3: 結果整形
         # ----------------------------------------
-        class_idx = int(np.argmax(probs))
+        class_idx = int(np.argmax(final_probs))
         predicted_class = self.id2revenue[class_idx]
         
-        # 確率辞書の作成
         prob_dict = {
-            self.id2revenue[i]: round(float(probs[i]), 4) 
-            for i in range(len(probs))
+            self.id2revenue[i]: round(float(final_probs[i]), 4) 
+            for i in range(len(final_probs))
         }
-        # S, A, B, C, D の順に見やすくソート
         prob_dict = {k: prob_dict[k] for k in ["S", "A", "B", "C", "D"] if k in prob_dict}
 
         result = {
             "estimated_revenue_class": predicted_class,
             "estimated_revenue_range": self.range_map.get(predicted_class, "不明"),
-            "confidence": round(float(np.max(probs)), 4),
+            "confidence": round(float(np.max(final_probs)), 4),
             "class_probabilities": prob_dict,
             "features_summary": summary,
         }
