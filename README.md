@@ -11,8 +11,8 @@
 | D | スタートアップ企業|
 
 - 本モデルはREST APIとして公開されており、Swagger UI (/docs) から直接テストが可能です。
-- **URL:** https://haru-first-app-19443304909.asia-northeast1.run.app/docs
-    - **リクエスト：**企業URL
+- **URL:**　https://haru-first-app-19443304909.asia-northeast1.run.app/docs
+    - **リクエスト：**　企業URL
     - **レスポンス：**分類結果
 - プロジェクトの動機・目的
 

@@ -8,6 +8,7 @@ transformers
 sentencepiece
 unidic-lite
 torch
+fugashi
 scikit-learn
 pandas
 numpy
