@@ -1,9 +1,9 @@
 steps:
-  # 🌟 0. Cloud Storageからモデルの重みをダウンロード
+  # 0. Cloud Storageからモデルの重みをダウンロード
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
-    args: ['storage', 'objects', 'copy', 'gs://revenue-model/model.pt', './models/model.pt']
-    
+    args: ['storage', 'cp', 'gs://revenue-model/model.pt', './models/model.pt']
+
   # 1. コンテナイメージのビルド
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/haru-repo/haru-first-app:latest', '.']
