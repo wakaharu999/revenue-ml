@@ -12,7 +12,7 @@ app = FastAPI(title="Revenue Range Estimation API")
 # ==========================================
 # インスタンス化することで、内部の __init__ が走りモデルがメモリにロードされます
 try:
-    predictor = RevenuePredictor(model_dir="models/revenue_model")
+    predictor = RevenuePredictor(model_dir="models/models")
 except RuntimeError as e:
     # 起動時にモデルが読み込めない場合はフェイルファストさせる
     raise e
