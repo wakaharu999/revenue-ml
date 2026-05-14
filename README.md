@@ -29,9 +29,9 @@
 
 ## ディレクトリ構成
 
-## データ概要re
-- EDINET DB( https://edinetdb.jp/) における売上ランキングトップ500の企業のHPをクローリングを行って得たテキスト群
-- J-Startup (https://www.j-startup.go.jp/startups/) に登録されている企業の内100社を対象にクローリングして得たテキスト群
+## データ概要
+- EDINET DB( https://edinetdb.jp/) における売上ランキングトップ500の企業のHPをクローリングを行って得たテキスト群。
+- J-Startup (https://www.j-startup.go.jp/startups/) に登録されている企業の内100社を対象にクローリングして得たテキスト群。
 
 ##　技術スタック
 - **Machine Learning:** PyTorch, Transformers(Hugging Face)

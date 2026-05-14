@@ -4,12 +4,10 @@ beautifulsoup4
 requests
 
 # --- 機械学習・ディープラーニング推論 ---
-tensorflow==2.15.0
 transformers
 sentencepiece
 unidic-lite
 torch
-sentence-transformers
 scikit-learn
 pandas
 numpy
