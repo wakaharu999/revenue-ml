@@ -4,14 +4,12 @@ __pycache__/
 .ipynb_checkpoints/
 .env
 
-node_modules/
-
 # データ・モデル系（重いファイル）
 data/crawled_data.jsonl
 data/splitted_data.csv
 models/
 
-# OS・エディタ系（追加おすすめ）
+# OS・エディタ系
 .DS_Store
 .vscode/
 *.log
