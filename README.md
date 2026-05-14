@@ -12,7 +12,7 @@
 
 - **URL:**　https://haru-first-app-19443304909.asia-northeast1.run.app/
 
-## 使用例(トヨタ自動車株式会社)
+## 使用例（トヨタ自動車株式会社）
 APの利用は、Swagger UI（`/docs`）からの実行、または `curl` コマンド等のHTTPクライアントから可能です。
 
 ### リクエスト例
@@ -60,10 +60,12 @@ curl -X 'POST' \
 ```
 
 ## プロジェクトの動機・目的
-営業リストの自動スコアリング、競合調査、または投資判断の初期スクリーニングにおいて、その企業がどの程度の規模感なのかを素早く把握することは重要です。
-本プロジェクトは、財務諸表などの構造化データがない未上場企業やスタートアップであっても、「Webサイトで発信しているテキスト（事業内容、採用情報、IRなど）」のニュアンスや情報量から、AIが企業の経済的規模を自動で概算できるかを検証・実装することを目的としています
+- 営業リストの自動スコアリング、競合調査、または投資判断の初期スクリーニングにおいて、その企業がどの程度の規模感なのかを素早く把握することは重要です。
+- 本プロジェクトは、財務諸表などの構造化データがない未上場企業やスタートアップであっても、「Webサイトで発信しているテキスト（事業内容、採用情報、IRなど）」のニュアンスや情報量から、AIが企業の経済的規模を自動で概算できるかを検証・実装することを目的としています
 
 ##　クラス推論の概要
+リクエストからレスポンスまでの流れ、推論モデルの具体的なアーキテクチャ精度についてです。
+
 ### 推論フロー
 1. **リクエスト:** ユーザーが `/estimate` エンドポイントに対象企業のURLを送信する。
 2. **クローリング:** `Scrapy` を用いたクローラーが起動。トップページだけでなく、内部のカテゴリ分類ロジックを用いて価値の高いリンク（About, Business, IR, Recruitなど）を巡回し、ページごとにテキストを取得する。
@@ -83,7 +85,6 @@ curl -X 'POST' \
 4. **Feature Fusion & Classification (特徴結合と分類)**
    共通の次元数（256次元）にマッピングされたテキスト特徴とカテゴリ特徴を結合（Concatenation）し、512次元の融合特徴ベクトルを作成します。最後に、これを線形分類器（Linear層）に入力し、各売上規模クラスの確率（Logits）を出力します。
 ### アーキテクチャ図
-
 ```mermaid
 graph TD
     subgraph Page-level Processing [ページごとの処理（各カテゴリごとに実行）]
@@ -144,21 +145,23 @@ graph TD
 
 ```text
 .
-├── src/                  # ソースコード
-│   ├── main.py           # FastAPIのアプリケーション定義・ルーティング
-│   ├── predict.py        # モデルのロード・前処理・推論ロジック
-│   ├── crawler.py        # Webクローラー定義
-│   └── model.py          # モデルアーキテクチャ定義
-│    └── dataset.py        # データの成形、トークナイズ
-│    └── evaluate.py       # モデルの評価関数
-│    └── train.py          # 推論モデルの学習
-│    └── features.py       # テキストからの追加特徴量抽出(現行モデルでは使用しない)
-├── models/               # モデルの重みファイル（GCSから自動ダウンロード）
-├── data/                 # カテゴリマッピング等の静的ファイル
-│   └── label_mappings.json
-├── Dockerfile            # デプロイ用コンテナ環境構築ファイル
-├── cloudbuild.yaml       # Google Cloud Build CI/CD パイプライン設定
-├── requirements.txt      # 依存ライブラリ
+├── src/                     # ソースコード
+│   ├── main.py              # FastAPIのアプリケーション定義・ルーティング
+│   ├── predict.py           # モデルのロード・前処理・推論ロジック
+│   ├── crawler.py           # Webクローラー定義
+│   ├── model.py             # モデルアーキテクチャ定義
+│   ├── dataset.py           # データの成形、トークナイズ
+│   ├── evaluate.py          # モデルの評価関数
+│   ├── train.py             # 推論モデルの学習
+│   └── features.py          # テキストからの追加特徴量抽出(現行モデルでは使用しない)
+├── models/                  # モデルの重みファイル（GCSから自動ダウンロード）
+├── data/                    # データセット
+│    ├── company.csv         # GBIZINFOから取得した企業URLデータ
+│    ├── raw_api_data.json.  # EDINET DBから取得した売上データ
+│    └── label_mappings.json # カテゴリマッピング
+├── Dockerfile               # デプロイ用コンテナ環境構築ファイル
+├── cloudbuild.yaml          # Google Cloud Build CI/CD パイプライン設定
+├── requirements.txt         # 依存ライブラリ
 
 ```
 
@@ -166,12 +169,11 @@ graph TD
 - EDINET DB( https://edinetdb.jp/) における売上ランキングトップ500の企業のHPをクローリングを行って得たテキスト群。
 - J-Startup (https://www.j-startup.go.jp/startups/) に登録されている企業の内100社を対象にクローリングして得たテキスト群。
 
-##　技術スタック
+## 技術スタック
 - **Machine Learning:** PyTorch, Transformers(Hugging Face)
 - **Backend / API:** FastAPI, Uvicorn, Pydantic
 - **Infrastructure:** Docker, Google Cloud Run, Cloud Build, Cloud Storage
 - **Data Engineering:** Pandas, NumPy
 - **Web Crawling:**: Scrapy
 
-##　ドキュメント概要
 
